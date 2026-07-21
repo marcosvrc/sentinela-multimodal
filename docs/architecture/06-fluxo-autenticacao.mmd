@@ -1,0 +1,22 @@
+%% Fluxo de autenticacao e autorizacao
+sequenceDiagram
+    actor Prof as Profissional
+    participant FE as Frontend
+    participant Cognito as Amazon Cognito
+    participant API as API
+
+    Prof->>FE: Informa credenciais
+    FE->>Cognito: Autentica (usuario/senha + MFA)
+    Cognito-->>FE: Access token (curta duracao) + refresh token
+    FE->>API: Requisicao com Authorization: Bearer <token>
+    API->>Cognito: Valida assinatura/claims do token
+    API->>API: Verifica papel, instituicao, unidade,<br/>vinculo assistencial, recurso e acao
+    alt Autorizado
+        API-->>FE: 200 + dados
+    else Nao autenticado
+        API-->>FE: 401 (sem revelar existencia do usuario)
+    else Autenticado mas sem permissao
+        API-->>FE: 403 + evento de auditoria
+    end
+
+    Note over Prof,API: Break-glass exige reautenticacao,<br/>justificativa, prazo limitado e revisao posterior

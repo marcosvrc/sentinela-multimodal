@@ -1,0 +1,67 @@
+/* "Big numbers" de alertas por criticidade (da mais alta para a mais
+   baixa) - ver AlertsPanel.tsx. Cor de fundo/numero segue a mesma escala
+   de risco do resto do sistema (--risk-*), mas o rotulo textual sempre
+   acompanha (nunca so a cor). */
+.cardsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  text-align: center;
+  font-family: inherit;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.card:hover {
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-3);
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.cardSelected {
+  border-color: currentColor;
+  box-shadow: var(--shadow-3);
+}
+
+.cardNumber {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.cardLabel {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cardHint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-subtle);
+}
+
+.detailHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}

@@ -1,0 +1,23 @@
+%% Diagrama de Contexto (C4 nivel 1) - SentinelHealth
+graph TB
+    profissional["Profissional de saude<br/>(medico, enfermeiro)"]
+    auditor["Auditor / Administrador"]
+
+    subgraph sentinelhealth["SentinelHealth"]
+        sistema["Sistema de apoio a<br/>analises clinicas multimodais"]
+    end
+
+    cognito[("Amazon Cognito<br/>(identidade)")]
+    s3[("Amazon S3<br/>(midias e relatorios)")]
+    transcribe["Amazon Transcribe"]
+    openai["OpenAI GPT<br/>(sintese/explicacao)"]
+    prontuario["Prontuario hospitalar<br/>(roadmap FHIR)"]
+
+    profissional -->|cadastra pacientes,<br/>envia midias,<br/>revisa relatorios| sistema
+    auditor -->|pesquisa eventos<br/>de auditoria| sistema
+
+    sistema -->|autentica/autoriza| cognito
+    sistema -->|armazena/le midias| s3
+    sistema -->|transcreve audio| transcribe
+    sistema -->|solicita sintese<br/>estruturada| openai
+    sistema -.->|integracao futura,<br/>fora do MVP| prontuario

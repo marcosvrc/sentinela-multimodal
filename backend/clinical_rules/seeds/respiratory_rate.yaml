@@ -1,0 +1,34 @@
+# Ver docs/CLASSIFICACAO_DADOS_CLINICOS.md secao 4 (Frequencia Respiratoria).
+code: respiratory_rate
+version: "0.1.0"
+population: adult
+status: draft
+effective_from: "2026-07-11"
+effective_to: null
+source:
+  reference: "CLASSIFICACAO_DADOS_CLINICOS.md#4-frequencia-respiratoria"
+  approved_by: "PENDENTE_APROVACAO_CLINICA"
+exclusions: []
+required_inputs:
+  - respiratory_rate_irpm # inteiro (irpm)
+rules:
+  - id: severe_bradypnea
+    when: "respiratory_rate_irpm <= 8"
+    risk_level: 6
+    classification_label: "Bradipneia grave"
+  - id: bradypnea
+    when: "9 <= respiratory_rate_irpm <= 11"
+    risk_level: 4
+    classification_label: "Bradipneia"
+  - id: normal
+    when: "12 <= respiratory_rate_irpm <= 20"
+    risk_level: 1
+    classification_label: "Normal"
+  - id: tachypnea
+    when: "21 <= respiratory_rate_irpm <= 24"
+    risk_level: 4
+    classification_label: "Taquipneia"
+  - id: severe_tachypnea
+    when: "respiratory_rate_irpm >= 25"
+    risk_level: 6
+    classification_label: "Taquipneia grave"

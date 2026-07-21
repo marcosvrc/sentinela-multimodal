@@ -1,0 +1,81 @@
+.field {
+  margin-bottom: var(--space-4);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  cursor: pointer;
+}
+
+.labelText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.hint {
+  font-size: var(--font-size-xs);
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.switchTrack {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  margin: 0;
+}
+
+.input:disabled {
+  cursor: not-allowed;
+}
+
+.track {
+  width: 40px;
+  height: 22px;
+  border-radius: var(--radius-pill);
+  background: var(--color-border-strong);
+  transition: background-color var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+}
+
+.track[data-checked="true"] {
+  background: var(--color-primary-800);
+}
+
+.thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-1);
+  transition: transform var(--transition-fast);
+}
+
+.track[data-checked="true"] .thumb {
+  transform: translateX(18px);
+}
+
+.input:focus-visible ~ .track {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.input:disabled ~ .track {
+  opacity: 0.5;
+}

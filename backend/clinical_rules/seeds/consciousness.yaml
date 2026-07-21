@@ -1,0 +1,36 @@
+# Ver docs/CLASSIFICACAO_DADOS_CLINICOS.md secao 7 (Nivel de Consciencia - ACVPU).
+# Escala de Glasgow e um instrumento complementar registrado a parte;
+# esta regra cobre apenas a classificacao primaria ACVPU.
+code: consciousness_acvpu
+version: "0.1.0"
+population: adult
+status: draft
+effective_from: "2026-07-11"
+effective_to: null
+source:
+  reference: "CLASSIFICACAO_DADOS_CLINICOS.md#7-nivel-de-consciencia"
+  approved_by: "PENDENTE_APROVACAO_CLINICA"
+exclusions: []
+required_inputs:
+  - acvpu_level # alerta | confusao_recente | responde_voz | responde_dor | nao_responde
+rules:
+  - id: alert
+    when: "acvpu_level == 'alerta'"
+    risk_level: 1
+    classification_label: "Alerta"
+  - id: recent_confusion
+    when: "acvpu_level == 'confusao_recente'"
+    risk_level: 4
+    classification_label: "Confusao recente"
+  - id: responds_to_voice
+    when: "acvpu_level == 'responde_voz'"
+    risk_level: 6
+    classification_label: "Responde a voz"
+  - id: responds_to_pain
+    when: "acvpu_level == 'responde_dor'"
+    risk_level: 6
+    classification_label: "Responde a dor"
+  - id: unresponsive
+    when: "acvpu_level == 'nao_responde'"
+    risk_level: 6
+    classification_label: "Nao responde"

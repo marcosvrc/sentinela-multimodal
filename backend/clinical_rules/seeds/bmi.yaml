@@ -1,0 +1,60 @@
+# Ver docs/CLASSIFICACAO_DADOS_CLINICOS.md secao 12 (IMC).
+# O IMC e um indicador de atencao cronica, nao de criticidade aguda isolada.
+# O mapeamento abaixo para a escala global de 6 niveis e uma aproximacao
+# preliminar (Rotina->1, Acompanhamento->2, Elevada->3, Prioritaria->4)
+# e deve ser revisado/aprovado antes de uso clinico real.
+code: bmi
+version: "0.1.0"
+population: adult
+status: draft
+effective_from: "2026-07-11"
+effective_to: null
+source:
+  reference: "CLASSIFICACAO_DADOS_CLINICOS.md#12-indice-de-massa-corporal-imc"
+  approved_by: "PENDENTE_APROVACAO_CLINICA"
+exclusions:
+  - pediatrico
+  - gestante
+required_inputs:
+  - bmi_kg_m2
+rules:
+  - id: severe_underweight
+    when: "bmi_kg_m2 < 16.0"
+    risk_level: 4
+    classification_label: "Baixo peso grave"
+    notes: "Categoria de atencao cronica: Prioritaria"
+  - id: moderate_underweight
+    when: "16.0 <= bmi_kg_m2 <= 16.9"
+    risk_level: 3
+    classification_label: "Baixo peso moderado"
+    notes: "Categoria de atencao cronica: Elevada"
+  - id: mild_underweight
+    when: "17.0 <= bmi_kg_m2 <= 18.4"
+    risk_level: 2
+    classification_label: "Baixo peso leve"
+    notes: "Categoria de atencao cronica: Acompanhamento"
+  - id: normal
+    when: "18.5 <= bmi_kg_m2 <= 24.9"
+    risk_level: 1
+    classification_label: "Peso normal (Eutrofia)"
+    notes: "Categoria de atencao cronica: Rotina"
+  - id: overweight
+    when: "25.0 <= bmi_kg_m2 <= 29.9"
+    risk_level: 2
+    classification_label: "Sobrepeso"
+    notes: "Categoria de atencao cronica: Acompanhamento"
+  - id: obesity_grade_1
+    when: "30.0 <= bmi_kg_m2 <= 34.9"
+    risk_level: 3
+    classification_label: "Obesidade Grau I"
+    notes: "Categoria de atencao cronica: Elevada"
+  - id: obesity_grade_2
+    when: "35.0 <= bmi_kg_m2 <= 39.9"
+    risk_level: 4
+    classification_label: "Obesidade Grau II"
+    notes: "Categoria de atencao cronica: Prioritaria"
+  - id: obesity_grade_3
+    when: "bmi_kg_m2 >= 40.0"
+    risk_level: 4
+    classification_label: "Obesidade Grau III"
+    notes: "Categoria de atencao cronica: Prioritaria"

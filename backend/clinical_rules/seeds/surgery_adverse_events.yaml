@@ -1,0 +1,41 @@
+# Ver docs/CLASSIFICACAO_DADOS_CLINICOS.md secao 11.4 (Eventos Adversos).
+# Sem limiar validado por procedimento, o modelo apenas sinaliza evento
+# candidato e trecho de video para revisao.
+code: surgery_adverse_events
+version: "0.1.0"
+population: adult
+status: draft
+effective_from: "2026-07-11"
+effective_to: null
+source:
+  reference: "CLASSIFICACAO_DADOS_CLINICOS.md#114-eventos-adversos"
+  approved_by: "PENDENTE_APROVACAO_CLINICA"
+exclusions:
+  - "criterios observaveis e mensuraveis por procedimento ainda nao validados"
+required_inputs:
+  - adverse_event # queda_paciente | convulsao | sangramento_excessivo | perda_consciencia | falha_equipamento | desconexao_dispositivos
+rules:
+  - id: patient_fall
+    when: "adverse_event == 'queda_paciente'"
+    risk_level: 6
+    classification_label: "Queda do paciente"
+  - id: seizure
+    when: "adverse_event == 'convulsao'"
+    risk_level: 6
+    classification_label: "Convulsao"
+  - id: excessive_bleeding
+    when: "adverse_event == 'sangramento_excessivo'"
+    risk_level: 6
+    classification_label: "Sangramento excessivo visivel"
+  - id: loss_of_consciousness
+    when: "adverse_event == 'perda_consciencia'"
+    risk_level: 6
+    classification_label: "Perda de consciencia"
+  - id: equipment_failure
+    when: "adverse_event == 'falha_equipamento'"
+    risk_level: 4
+    classification_label: "Falha de equipamento"
+  - id: device_disconnection
+    when: "adverse_event == 'desconexao_dispositivos'"
+    risk_level: 4
+    classification_label: "Desconexao de dispositivos"

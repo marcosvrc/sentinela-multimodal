@@ -1,0 +1,35 @@
+# Ver docs/CLASSIFICACAO_DADOS_CLINICOS.md secao 10.3 (Padroes de Marcha).
+code: gait
+version: "0.1.0"
+population: adult
+status: draft
+effective_from: "2026-07-11"
+effective_to: null
+source:
+  reference: "CLASSIFICACAO_DADOS_CLINICOS.md#103-padroes-de-marcha-fisioterapia"
+  approved_by: "PENDENTE_APROVACAO_CLINICA"
+exclusions:
+  - "ausencia de linha de base ou procedimento de referencia definido"
+required_inputs:
+  - gait_finding # normal | claudicacao | arrasto_de_membro | instabilidade | queda
+rules:
+  - id: normal
+    when: "gait_finding == 'normal'"
+    risk_level: 1
+    classification_label: "Marcha normal"
+  - id: claudication
+    when: "gait_finding == 'claudicacao'"
+    risk_level: 3
+    classification_label: "Claudicacao"
+  - id: limb_drag
+    when: "gait_finding == 'arrasto_de_membro'"
+    risk_level: 4
+    classification_label: "Arrasto de membro"
+  - id: instability
+    when: "gait_finding == 'instabilidade'"
+    risk_level: 4
+    classification_label: "Instabilidade"
+  - id: fall
+    when: "gait_finding == 'queda'"
+    risk_level: 6
+    classification_label: "Queda"

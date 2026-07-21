@@ -1,0 +1,63 @@
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-7) var(--space-6);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.stateIcon {
+  color: var(--color-text-subtle);
+  margin-bottom: var(--space-1);
+}
+
+.stateTitle {
+  font-weight: 600;
+  font-size: var(--font-size-md);
+  margin: 0;
+  color: var(--color-text);
+}
+
+.stateDescription {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-base);
+  margin: 0;
+  max-width: 480px;
+}
+
+.skeletonWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.skeletonRow {
+  height: 56px;
+  border-radius: var(--radius-field);
+  background: linear-gradient(
+    90deg,
+    var(--color-border) 25%,
+    var(--color-background) 50%,
+    var(--color-border) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonRow {
+    animation: none;
+  }
+}

@@ -1,0 +1,32 @@
+# Ver docs/CLASSIFICACAO_DADOS_CLINICOS.md secao 11.3 (Equipe Cirurgica).
+# Nao deve ser usado para atribuir culpa ou concluir erro medico.
+code: surgery_team
+version: "0.1.0"
+population: adult
+status: draft
+effective_from: "2026-07-11"
+effective_to: null
+source:
+  reference: "CLASSIFICACAO_DADOS_CLINICOS.md#113-equipe-cirurgica"
+  approved_by: "PENDENTE_APROVACAO_CLINICA"
+exclusions:
+  - "uso para atribuicao de culpa ou conclusao de erro medico"
+required_inputs:
+  - team_finding # coordenacao_adequada | aglomeracao_excessiva | movimentacao_acelerada | saida_abrupta
+rules:
+  - id: adequate_coordination
+    when: "team_finding == 'coordenacao_adequada'"
+    risk_level: 1
+    classification_label: "Coordenacao adequada"
+  - id: excessive_crowding
+    when: "team_finding == 'aglomeracao_excessiva'"
+    risk_level: 3
+    classification_label: "Aglomeracao excessiva"
+  - id: accelerated_movement
+    when: "team_finding == 'movimentacao_acelerada'"
+    risk_level: 4
+    classification_label: "Movimentacao acelerada"
+  - id: abrupt_departure
+    when: "team_finding == 'saida_abrupta'"
+    risk_level: 6
+    classification_label: "Saida abrupta da equipe"

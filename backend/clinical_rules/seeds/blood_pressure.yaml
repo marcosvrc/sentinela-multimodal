@@ -1,0 +1,61 @@
+# Regra preliminar de triagem (ver docs/CLASSIFICACAO_DADOS_CLINICOS.md secao 1).
+# Sujeita a validacao e aprovacao clinica formal antes de publicacao real.
+#
+# v0.2.0: completa a cobertura da tabela documentada (8 faixas, antes so 3
+# estavam implementadas - hipotensao/limitrofe/pressao elevada/hipertensao
+# estagio 1/2 estavam ausentes, deixando a faixa sistolica 91-180 mmHg sem
+# nenhuma regra correspondente e caindo em INCONCLUSIVO). "Normal" e
+# "Pressao elevada" exigem sistolica E diastolica (regra do documento);
+# as demais categorias hipertensivas usam sistolica OU diastolica (a
+# categoria mais elevada atingida por qualquer uma das duas prevalece) -
+# o motor de regras ja resolve a "regra de conflito: usar sempre a de
+# maior risco" escolhendo o `risk_level` mais alto entre as regras que
+# casarem (ver app.rules_engine.engine.evaluate_rule_set).
+code: blood_pressure
+version: "0.2.0"
+population: adult
+status: draft
+effective_from: "2026-07-18"
+effective_to: null
+source:
+  reference: "CLASSIFICACAO_DADOS_CLINICOS.md#1-pressao-arterial"
+  approved_by: "PENDENTE_APROVACAO_CLINICA"
+exclusions:
+  - pediatria
+  - gestacao
+required_inputs:
+  - systolic_mmhg
+  - diastolic_mmhg
+rules:
+  - id: hypotension_severe
+    when: "systolic_mmhg <= 90"
+    risk_level: 6
+    classification_label: "Hipotensao grave"
+  - id: hypotension
+    when: "91 <= systolic_mmhg <= 100"
+    risk_level: 4
+    classification_label: "Hipotensao"
+  - id: low_borderline
+    when: "101 <= systolic_mmhg <= 110"
+    risk_level: 3
+    classification_label: "Limitrofe baixa"
+  - id: normal
+    when: "111 <= systolic_mmhg <= 119 and diastolic_mmhg < 80"
+    risk_level: 1
+    classification_label: "Normal"
+  - id: elevated
+    when: "120 <= systolic_mmhg <= 129 and diastolic_mmhg < 80"
+    risk_level: 3
+    classification_label: "Pressao elevada"
+  - id: hypertension_stage_1
+    when: "(130 <= systolic_mmhg <= 139) or (80 <= diastolic_mmhg <= 89)"
+    risk_level: 3
+    classification_label: "Hipertensao estagio 1"
+  - id: hypertension_stage_2
+    when: "(140 <= systolic_mmhg <= 180) or (90 <= diastolic_mmhg <= 120)"
+    risk_level: 4
+    classification_label: "Hipertensao estagio 2"
+  - id: hypertensive_crisis
+    when: "systolic_mmhg > 180 or diastolic_mmhg > 120"
+    risk_level: 6
+    classification_label: "Crise hipertensiva"

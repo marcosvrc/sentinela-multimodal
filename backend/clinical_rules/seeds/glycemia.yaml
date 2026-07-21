@@ -1,0 +1,49 @@
+# Ver docs/CLASSIFICACAO_DADOS_CLINICOS.md secao 6 (Glicemia Capilar).
+# Tabela valida apenas para medicao em jejum, adulto nao gestante.
+code: glycemia_fasting
+version: "0.1.0"
+population: adult
+status: draft
+effective_from: "2026-07-11"
+effective_to: null
+source:
+  reference: "CLASSIFICACAO_DADOS_CLINICOS.md#6-glicemia-capilar"
+  approved_by: "PENDENTE_APROVACAO_CLINICA"
+exclusions:
+  - gestante
+  - pediatrico
+  - "medicao antes/depois da refeicao ou aleatoria (tabela nao se aplica)"
+required_inputs:
+  - glucose_mg_dl
+  - moment # jejum | antes_refeicao | apos_refeicao | aleatoria
+  - patient_type # diabetico | nao_diabetico
+  - insulin_use
+rules:
+  - id: severe_hypoglycemia
+    when: "moment == 'jejum' and glucose_mg_dl < 54"
+    risk_level: 6
+    classification_label: "Hipoglicemia grave"
+  - id: hypoglycemia
+    when: "moment == 'jejum' and 54 <= glucose_mg_dl <= 69"
+    risk_level: 4
+    classification_label: "Hipoglicemia"
+  - id: normal_fasting
+    when: "moment == 'jejum' and 70 <= glucose_mg_dl <= 99"
+    risk_level: 1
+    classification_label: "Normal em jejum"
+  - id: impaired_fasting
+    when: "moment == 'jejum' and 100 <= glucose_mg_dl <= 125"
+    risk_level: 3
+    classification_label: "Glicemia de jejum alterada"
+  - id: elevated_fasting
+    when: "moment == 'jejum' and 126 <= glucose_mg_dl <= 249"
+    risk_level: 4
+    classification_label: "Valor elevado em jejum"
+  - id: significant_hyperglycemia
+    when: "moment == 'jejum' and 250 <= glucose_mg_dl <= 399"
+    risk_level: 5
+    classification_label: "Hiperglicemia importante"
+  - id: severe_hyperglycemia
+    when: "moment == 'jejum' and glucose_mg_dl >= 400"
+    risk_level: 6
+    classification_label: "Hiperglicemia grave"

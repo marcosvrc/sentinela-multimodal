@@ -1,0 +1,26 @@
+%% Sequencia: upload seguro de midia via URL pre-assinada
+sequenceDiagram
+    actor Prof as Profissional
+    participant FE as Frontend
+    participant API as API
+    participant S3 as Amazon S3 (quarentena)
+    participant AV as Varredura antimalware
+    participant S3P as Amazon S3 (promovido)
+
+    Prof->>FE: Seleciona arquivo (audio/video/imagem)
+    FE->>API: POST /media (modalidade, tamanho, mime)
+    API->>API: Valida formato/tamanho permitido
+    API-->>FE: URL pre-assinada (curta duracao, escopo restrito)
+    FE->>S3: PUT direto do navegador (sem passar pela API)
+    FE->>API: Confirma upload concluido
+
+    API->>AV: Solicita varredura + validacao de assinatura de arquivo
+    alt Arquivo valido
+        AV->>S3P: Promove objeto para area de processamento
+        API-->>FE: media_id=PROMOTED
+    else Arquivo invalido/malicioso
+        AV->>API: Rejeicao (motivo)
+        API-->>FE: media_id=REJECTED (motivo)
+    end
+
+    Note over API,S3: URLs pre-assinadas nunca sao<br/>persistidas em log ou auditoria

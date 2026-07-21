@@ -1,0 +1,80 @@
+[project]
+name = "sentinelhealth-backend"
+version = "0.1.0"
+description = "SentinelHealth - API e workers do sistema de apoio a analises clinicas multimodais"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.6.0",
+    "sqlalchemy>=2.0.36",
+    "alembic>=1.13.3",
+    "psycopg[binary]>=3.2.3",
+    "boto3>=1.35.0",
+    "python-json-logger>=2.0.7",
+    "pyyaml>=6.0.2",
+    "jsonschema>=4.23.0",
+    "email-validator>=2.2.0",
+    "openai>=1.54.0",
+    "reportlab>=4.2.5",
+    "Pillow>=10.4.0",
+    "PyJWT[crypto]>=2.9.0",
+    "cachetools>=5.5.0",
+    "slowapi>=0.1.9",
+    "httpx>=0.27.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.3",
+    "pytest-cov>=5.0.0",
+    "httpx>=0.27.2",
+    "ruff>=0.7.0",
+    "mypy>=1.13.0",
+]
+# Dependencias pesadas do worker de video self-hosted (secao 4.1/12.4;
+# ADR 0016) - nunca instaladas na API nem nos demais workers (audio,
+# imagem, relatorio, orquestrador). O binario do OpenPose e compilado na
+# imagem Docker do worker de video, nao distribuido via pip (ver
+# app/integrations/vision/real_engines.py).
+vision = [
+    "ultralytics>=8.3.0",
+    "numpy>=1.26.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+# B008: Depends()/Query() em defaults e o idioma padrao do FastAPI para
+# injecao de dependencias; nao e o mesmo risco que uma chamada de funcao
+# generica em default de argumento.
+# UP042: mantemos `class X(str, Enum)` em vez de `enum.StrEnum` para
+# compatibilidade com ferramentas locais rodando em Python 3.10 durante o
+# desenvolvimento; o comportamento e equivalente para os enums deste projeto.
+# UP017: `datetime.UTC` so existe a partir do Python 3.11; mantemos
+# `timezone.utc` (equivalente, disponivel desde o 3.2) pelo mesmo motivo de
+# compatibilidade local acima.
+ignore = ["B008", "UP042", "UP017"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = [
+    "integration: testes de ponta a ponta que exercitam multiplos modulos via API + worker + banco real (item 16 do backlog); requer Postgres (make compose-up).",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app", "clinical_rules"]

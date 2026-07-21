@@ -1,0 +1,147 @@
+/* Design tokens - ver ESPECIFICACAO_FRONTEND.md secao 5.
+   Paleta neutra (cinzas de baixa saturacao, inspirados em design systems
+   enterprise como IBM Carbon) com verde como cor de marca/acao, reservando
+   cor forte apenas para status e niveis de risco - a informacao clinica
+   nunca depende so da cor (rotulo textual sempre acompanha, ver RiskBadge/
+   StatusBadge). Cores e ativos proprios, sem reaproveitar marca de
+   terceiros. */
+:root {
+  /* Marca / acao primaria */
+  --color-primary-900: #0b3d2b;
+  --color-primary-800: #10532f;
+  --color-primary-700: #15703f;
+  --color-primary-600: #1c8a4e;
+  --color-accent-500: #22c55e;
+  --color-accent-100: #e7f6ec;
+
+  /* Neutros - escala unica de cinza para fundo/texto/bordas, evita o tom
+     esverdeado que conflitava com a marca em telas densas. */
+  --color-background: #f7f8fa;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-border: #e2e5e9;
+  --color-border-strong: #cbd0d6;
+  --color-text: #1a1f27;
+  --color-text-muted: #667080;
+  --color-text-subtle: #8992a1;
+  --color-focus: #1565c0;
+
+  --color-sidebar-bg: #12181f;
+  --color-sidebar-text: #c7ccd4;
+  --color-sidebar-text-muted: #7b8492;
+  --color-sidebar-border: #232b35;
+  --color-sidebar-active-bg: rgba(34, 197, 94, 0.16);
+
+  /* Cards de metrica (dashboard) - paleta decorativa, nao clinica. */
+  --metric-rose: #e11d48;
+  --metric-green: #16a34a;
+  --metric-blue: #2563eb;
+  --metric-purple: #7c3aed;
+
+  /* Niveis de risco (ESCOPO_PROJETO.md secao 5.6) - cor nunca e o unico
+     sinal, sempre acompanhada de rotulo/nivel numerico. */
+  --risk-low: #1f8a4c;
+  --risk-mild: #b7860b;
+  --risk-moderate: #c2650a;
+  --risk-high: #d1372b;
+  --risk-very-high: #8b2fc4;
+  --risk-critical: #7a0d1f;
+  --risk-inconclusive: #5b6472;
+
+  /* Tags de status de fluxo (rascunho/processando/concluido/etc) - tom
+     suave (fundo tintado + texto na mesma familia de cor), reservando o
+     preenchimento solido/alto-contraste do RiskBadge para severidade
+     clinica de fato (ESCOPO_PROJETO.md secao 5.6: cor nunca e o unico
+     sinal, mas o PESO visual da cor deve refletir o peso da informacao). */
+  --tag-neutral-bg: #eef0f3;
+  --tag-neutral-text: #4b5563;
+  --tag-success-bg: #e6f4ea;
+  --tag-success-text: #1f7a41;
+  --tag-warning-bg: #fdf1dd;
+  --tag-warning-text: #92600a;
+  --tag-danger-bg: #fbe9e7;
+  --tag-danger-text: #b3261e;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  --radius-field: 8px;
+  --radius-card: 12px;
+  --radius-pill: 999px;
+
+  /* Elevacao em 3 niveis - sombras neutras (nao mais tintadas de verde),
+     mais proximas do padrao de sistemas enterprise (Carbon/Material). */
+  --shadow-1: 0 1px 2px rgba(16, 24, 32, 0.06);
+  --shadow-2: 0 2px 4px rgba(16, 24, 32, 0.06), 0 8px 16px rgba(16, 24, 32, 0.06);
+  --shadow-3: 0 8px 16px rgba(16, 24, 32, 0.08), 0 24px 48px rgba(16, 24, 32, 0.12);
+  --shadow-card: var(--shadow-2);
+
+  /* Escala tipografica - usada nos titulos de pagina/secao para manter
+     hierarquia consistente entre telas (ate aqui, cada tela declarava seu
+     proprio tamanho inline). */
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-base: 14px;
+  --font-size-md: 15px;
+  --font-size-lg: 18px;
+  --font-size-xl: 22px;
+  --font-size-2xl: 28px;
+
+  --transition-fast: 0.12s ease;
+  --transition-base: 0.18s ease;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: var(--font-size-base);
+  background: var(--color-background);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: inherit;
+  color: var(--color-text);
+}
+
+/* Scrollbar discreta (Chromium/Firefox) - evita a barra padrao chamativa
+   em paineis com overflow (sidebar, tabelas, modais). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: var(--radius-pill);
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}

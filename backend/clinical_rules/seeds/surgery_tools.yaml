@@ -1,0 +1,32 @@
+# Ver docs/CLASSIFICACAO_DADOS_CLINICOS.md secao 11.1 (Ferramentas Cirurgicas).
+# Modulo experimental no MVP; achados sao "possivel desvio" ate confirmacao da equipe.
+code: surgery_tools
+version: "0.1.0"
+population: adult
+status: draft
+effective_from: "2026-07-11"
+effective_to: null
+source:
+  reference: "CLASSIFICACAO_DADOS_CLINICOS.md#111-ferramentas-cirurgicas"
+  approved_by: "PENDENTE_APROVACAO_CLINICA"
+exclusions:
+  - "protocolo/fases/instrumentos esperados nao definidos para a especialidade"
+required_inputs:
+  - tool_finding # uso_correto | instrumento_ausente | instrumento_incorreto | tempo_excessivo
+rules:
+  - id: correct_use
+    when: "tool_finding == 'uso_correto'"
+    risk_level: 1
+    classification_label: "Uso correto"
+  - id: missing_instrument
+    when: "tool_finding == 'instrumento_ausente'"
+    risk_level: 3
+    classification_label: "Instrumento ausente"
+  - id: incorrect_instrument
+    when: "tool_finding == 'instrumento_incorreto'"
+    risk_level: 4
+    classification_label: "Instrumento incorreto"
+  - id: excessive_time
+    when: "tool_finding == 'tempo_excessivo'"
+    risk_level: 4
+    classification_label: "Tempo excessivo de uso"

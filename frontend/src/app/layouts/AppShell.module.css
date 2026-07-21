@@ -1,0 +1,331 @@
+.shell {
+  display: grid;
+  grid-template-columns: 248px 1fr;
+  height: 100vh;
+  background: var(--color-background);
+}
+
+.skipLink {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  background: var(--color-primary-900);
+  color: #fff;
+  padding: var(--space-2) var(--space-3);
+}
+
+.skipLink:focus {
+  left: var(--space-2);
+  top: var(--space-2);
+}
+
+/* Sidebar escura (padrao de produtos enterprise modernos - Carbon,
+   Linear, Vercel: separa claramente o eixo de navegacao do conteudo
+   clinico, que fica sempre em fundo claro para leitura prolongada). */
+.sidebar {
+  background: var(--color-sidebar-bg);
+  color: var(--color-sidebar-text);
+  padding: var(--space-5) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-weight: 700;
+  font-size: var(--font-size-lg);
+  color: #ffffff;
+  margin-bottom: var(--space-6);
+  padding: 0 var(--space-2);
+}
+
+.brandIcon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  color: var(--color-accent-500);
+}
+
+.navSectionLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-sidebar-text-muted);
+  margin: 0 0 var(--space-2) var(--space-3);
+}
+
+.navList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 10px var(--space-3);
+  border-radius: var(--radius-field);
+  color: var(--color-sidebar-text);
+  text-decoration: none;
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.navLink:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
+.navLink:focus-visible {
+  outline: 2px solid var(--color-accent-500);
+  outline-offset: 2px;
+}
+
+.navLinkActive {
+  background: var(--color-sidebar-active-bg);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.navLinkActive .navIcon {
+  color: var(--color-accent-500);
+}
+
+.navIcon {
+  flex-shrink: 0;
+  color: var(--color-sidebar-text-muted);
+  transition: color var(--transition-fast);
+}
+
+.navGroup {
+  margin-top: 2px;
+}
+
+.navGroupToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 10px var(--space-3);
+  border-radius: var(--radius-field);
+  background: transparent;
+  border: none;
+  color: var(--color-sidebar-text);
+  font: inherit;
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.navGroupToggle:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
+.navGroupToggle:focus-visible {
+  outline: 2px solid var(--color-accent-500);
+  outline-offset: 2px;
+}
+
+.navGroupToggleActive {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.navGroupToggleActive .navIcon {
+  color: var(--color-accent-500);
+}
+
+.navGroupLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.chevron {
+  flex-shrink: 0;
+  color: var(--color-sidebar-text-muted);
+  transition: transform var(--transition-fast);
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.subNavList {
+  list-style: none;
+  margin: 2px 0 0 0;
+  padding: 0 0 0 var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-left: 1px solid var(--color-sidebar-border);
+  margin-left: var(--space-4);
+}
+
+.subNavLink {
+  display: block;
+  padding: 8px var(--space-3);
+  border-radius: var(--radius-field);
+  color: var(--color-sidebar-text-muted);
+  text-decoration: none;
+  font-size: var(--font-size-sm);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.subNavLink:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
+.subNavLink:focus-visible {
+  outline: 2px solid var(--color-accent-500);
+  outline-offset: 2px;
+}
+
+.sidebarFooter {
+  margin-top: auto;
+  padding: var(--space-4);
+  border-radius: var(--radius-card);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--color-sidebar-border);
+}
+
+.sidebarFooterTitle {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  margin: 0 0 var(--space-1) 0;
+  color: #ffffff;
+}
+
+.sidebarFooterText {
+  font-size: var(--font-size-xs);
+  margin: 0;
+  color: var(--color-sidebar-text-muted);
+  line-height: 1.5;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.topbar {
+  flex-shrink: 0;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-6);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.topbarTitle {
+  font-weight: 600;
+  color: var(--color-text);
+  font-size: var(--font-size-md);
+}
+
+.topbarActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.userChip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--color-border);
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--color-primary-900);
+  color: #ffffff;
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  flex-shrink: 0;
+}
+
+.userGreeting {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  line-height: 1.3;
+}
+
+.userName {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.main {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: var(--space-6);
+}
+
+.mainInner {
+  max-width: 1440px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+@media (max-width: 1199px) {
+  .shell {
+    grid-template-columns: 72px 1fr;
+  }
+
+  .brand span:last-child,
+  .navSectionLabel,
+  .navLink span:last-child,
+  .navGroupLabel span:last-child,
+  .sidebarFooter {
+    display: none;
+  }
+
+  .navLink,
+  .navGroupToggle {
+    justify-content: center;
+  }
+
+  .subNavList {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: none;
+  }
+}

@@ -1,0 +1,40 @@
+# macOS
+.DS_Store
+
+# --- Backend (Python / uv) ---
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.egg-info/
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.ruff_cache/
+*.pyc
+
+# Midia local gerada em tempo de execucao (uploads simulados do adaptador
+# LOCAL de storage, ver app/storage/local.py) - nunca deve ir para o repo.
+backend/.local-media/
+
+# Modelo pre-treinado do YOLOv8 (baixado automaticamente na primeira
+# execucao, ver docs/MANUAL_INSTALACAO.md) - binario grande, nao versionado.
+backend/yolov8n.pt
+
+# --- Frontend (Node / Vite) ---
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+
+# --- Variaveis de ambiente e segredos ---
+.env
+.env.*
+!.env.example
+!*/.env.example
+
+# --- Terraform ---
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log

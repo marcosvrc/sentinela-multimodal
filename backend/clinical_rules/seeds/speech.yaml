@@ -1,0 +1,33 @@
+# Ver docs/CLASSIFICACAO_DADOS_CLINICOS.md secao 9 (Sintomas Relacionados a Fala).
+# Achados candidatos derivados de audio/texto; alteracao subita aciona
+# protocolo institucional de avaliacao neurologica, sem confirmar etiologia.
+code: speech_alteration
+version: "0.1.0"
+population: adult
+status: draft
+effective_from: "2026-07-11"
+effective_to: null
+source:
+  reference: "CLASSIFICACAO_DADOS_CLINICOS.md#9-sintomas-relacionados-a-fala"
+  approved_by: "PENDENTE_APROVACAO_CLINICA"
+exclusions:
+  - "idioma, sotaque, ruido e qualidade de gravacao insuficientes (classificar como inconclusivo)"
+required_inputs:
+  - speech_finding # normal | alteracao_leve | alteracao_subita_ou_grave | afasia_global
+rules:
+  - id: normal
+    when: "speech_finding == 'normal'"
+    risk_level: 1
+    classification_label: "Normal (fala clara e coerente)"
+  - id: mild_alteration
+    when: "speech_finding == 'alteracao_leve'"
+    risk_level: 2
+    classification_label: "Alteracao leve"
+  - id: sudden_or_severe_alteration
+    when: "speech_finding == 'alteracao_subita_ou_grave'"
+    risk_level: 4
+    classification_label: "Alteracao subita ou grave"
+  - id: global_aphasia
+    when: "speech_finding == 'afasia_global'"
+    risk_level: 6
+    classification_label: "Afasia global / perda subita da fala"

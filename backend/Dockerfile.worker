@@ -1,0 +1,30 @@
+# syntax=docker/dockerfile:1
+# Imagem base para workers CPU (regras, texto, audio, consolidacao, PDF).
+# O worker de visao (OpenPose/YOLO) usa uma imagem separada por ter
+# dependencias pesadas de visao computacional (fora do scaffold inicial).
+FROM python:3.11-slim AS base
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+WORKDIR /app
+
+COPY pyproject.toml uv.lock* ./
+RUN uv sync --frozen --no-dev || uv sync --no-dev
+
+COPY app ./app
+COPY clinical_rules ./clinical_rules
+
+RUN useradd --create-home appuser && chown -R appuser:appuser /app
+USER appuser
+
+# --no-dev evita que "uv run" tente sincronizar as dependencias de
+# desenvolvimento como usuario nao-root em runtime (mesmo motivo do
+# Dockerfile da API).
+CMD ["uv", "run", "--no-dev", "python", "-m", "app.orchestration.worker"]

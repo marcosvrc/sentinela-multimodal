@@ -1,0 +1,42 @@
+# Ver docs/CLASSIFICACAO_DADOS_CLINICOS.md secao 3 (Frequencia Cardiaca).
+code: heart_rate
+version: "0.1.0"
+population: adult
+status: draft
+effective_from: "2026-07-11"
+effective_to: null
+source:
+  reference: "CLASSIFICACAO_DADOS_CLINICOS.md#3-frequencia-cardiaca"
+  approved_by: "PENDENTE_APROVACAO_CLINICA"
+exclusions: []
+required_inputs:
+  - heart_rate_bpm # inteiro (bpm)
+rules:
+  - id: severe_bradycardia
+    when: "heart_rate_bpm <= 40"
+    risk_level: 6
+    classification_label: "Bradicardia grave"
+  - id: bradycardia
+    when: "41 <= heart_rate_bpm <= 50"
+    risk_level: 4
+    classification_label: "Bradicardia"
+  - id: low_borderline
+    when: "51 <= heart_rate_bpm <= 59"
+    risk_level: 3
+    classification_label: "Limitrofe baixa"
+  - id: normal
+    when: "60 <= heart_rate_bpm <= 100"
+    risk_level: 1
+    classification_label: "Normal"
+  - id: mild_tachycardia
+    when: "101 <= heart_rate_bpm <= 110"
+    risk_level: 3
+    classification_label: "Taquicardia leve"
+  - id: tachycardia
+    when: "111 <= heart_rate_bpm <= 130"
+    risk_level: 4
+    classification_label: "Taquicardia"
+  - id: severe_tachycardia
+    when: "heart_rate_bpm >= 131"
+    risk_level: 6
+    classification_label: "Taquicardia grave"

@@ -1,0 +1,87 @@
+.wrapper {
+  position: relative;
+  width: 100%;
+}
+
+/* O input fica dentro de um wrapper (para posicionar a lista de
+   resultados de forma absoluta) - isso o retira do contexto flex direto
+   de `FormField`, que e o que normalmente estica os campos para ocupar a
+   largura toda. Sem esta regra, o campo ficava com a largura minima
+   padrao do navegador (bem menor que os demais campos do formulario). */
+.wrapper input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.selected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.clearButton {
+  border: none;
+  background: transparent;
+  color: var(--color-primary-700);
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  padding: 0;
+  white-space: nowrap;
+  transition: color var(--transition-fast);
+}
+
+.clearButton:hover {
+  color: var(--color-primary-900);
+  text-decoration: underline;
+}
+
+.results {
+  list-style: none;
+  margin: var(--space-1) 0 0 0;
+  padding: var(--space-1) 0;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-field);
+  background: var(--color-surface);
+  max-height: 280px;
+  overflow-y: auto;
+  box-shadow: var(--shadow-card);
+}
+
+.resultItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--space-3);
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  color: var(--color-text);
+  box-sizing: border-box;
+}
+
+.results li:last-child .resultItem {
+  border-bottom: none;
+}
+
+.resultItem:hover,
+.resultItem:focus-visible {
+  background: var(--color-accent-100);
+}
+
+.resultItemMuted {
+  padding: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: 14px;
+}

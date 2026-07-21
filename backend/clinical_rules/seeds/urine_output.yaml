@@ -1,0 +1,47 @@
+# Debito urinario / diurese - GAP identificado em relacao a
+# docs/CLASSIFICACAO_DADOS_CLINICOS.md (nao consta no documento original,
+# mas e um sinal classico de monitoramento em UTI/sepse - oliguria e um
+# dos gatilhos de alerta precoce mais usados na pratica clinica). Faixas
+# de referencia geral para adulto (ml/kg/h convertido para ml/h assumindo
+# ~70kg de referencia, ver `notes` de cada regra) - sujeitas a validacao e
+# aprovacao clinica formal antes de publicacao real, mesmo criterio das
+# demais regras deste conjunto.
+code: urine_output
+version: "0.1.0"
+population: adult
+status: draft
+effective_from: "2026-07-18"
+effective_to: null
+source:
+  reference: "Referencia geral de oliguria (<0.5 mL/kg/h por >=6h) - literatura de cuidados criticos/sepse; ainda PENDENTE_APROVACAO_CLINICA formal com fonte primaria."
+  approved_by: "PENDENTE_APROVACAO_CLINICA"
+exclusions:
+  - pediatrico
+  - "uso de diureticos em curso (pode mascarar oliguria real ou produzir poliuria induzida)"
+  - "insuficiencia renal cronica dialitica (faixas de referencia nao se aplicam)"
+required_inputs:
+  - urine_output_ml_h
+rules:
+  - id: anuria
+    when: "urine_output_ml_h < 10"
+    risk_level: 6
+    classification_label: "Anuria"
+    notes: "Praticamente ausencia de diurese - emergencia potencial (lesao renal aguda, obstrucao)."
+  - id: severe_oliguria
+    when: "10 <= urine_output_ml_h < 30"
+    risk_level: 5
+    classification_label: "Oliguria grave"
+    notes: "Referencia ~<0.5 mL/kg/h para adulto de 70kg - sinal precoce de hipoperfusao/sepse."
+  - id: oliguria
+    when: "30 <= urine_output_ml_h < 50"
+    risk_level: 4
+    classification_label: "Oliguria"
+  - id: normal
+    when: "50 <= urine_output_ml_h <= 200"
+    risk_level: 1
+    classification_label: "Diurese normal"
+  - id: polyuria
+    when: "urine_output_ml_h > 200"
+    risk_level: 3
+    classification_label: "Poliuria"
+    notes: "Pode indicar diabetes insipidus, hiperglicemia ou resposta a hidratacao/diureticos - avaliacao clinica necessaria."

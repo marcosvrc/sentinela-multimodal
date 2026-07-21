@@ -1,0 +1,94 @@
+.wrapper {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.caption {
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.table th {
+  text-align: center;
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-text-muted);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--color-background);
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.table td {
+  text-align: center;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  min-height: 56px;
+  color: var(--color-text);
+}
+
+/* Celulas de acao tem varios botoes lado a lado - alinha o grupo ao
+   centro, mas mantem os botoes lidos da esquerda para a direita entre
+   si (o `justify-content: center` do wrapper flex de cada celula, ja
+   definido inline nas paginas, cuida disso). */
+.table td > div {
+  display: inline-flex;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr {
+  transition: background-color var(--transition-fast);
+}
+
+.table tbody tr:hover {
+  background: var(--color-background);
+}
+
+@media (max-width: 767px) {
+  .table thead {
+    display: none;
+  }
+
+  .table,
+  .table tbody,
+  .table tr,
+  .table td {
+    display: block;
+    width: 100%;
+  }
+
+  .table tr {
+    border-bottom: 1px solid var(--color-border);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .table td {
+    border-bottom: none;
+    padding: var(--space-1) 0;
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--color-text-muted);
+  }
+}

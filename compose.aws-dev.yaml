@@ -1,0 +1,31 @@
+# Override OPCIONAL para conectar o backend/worker (rodando localmente via
+# compose.yaml) a servicos AWS reais (S3/SQS/Transcribe) em vez dos
+# adaptadores LOCAL - ver infra/environments/dev/README.md.
+#
+# Uso:
+#   docker compose -f compose.yaml -f compose.aws-dev.yaml up -d --build backend worker
+#
+# NUNCA usado por padrao (so entra em vigor quando explicitamente
+# combinado com -f) e NUNCA monta o ~/.aws completo do desenvolvedor -
+# monta apenas um diretorio isolado (~/.aws-sentinelhealth-dev, fora do
+# repositorio) contendo uma copia MINIMA e read-only das credenciais do
+# profile usado para este projeto, criado uma unica vez seguindo o passo
+# 4 do README citado acima. Isso evita expor outros perfis/contas AWS que
+# possam existir no ~/.aws real do desenvolvedor.
+#
+# A montagem e sempre `:ro` (read-only) - o container nunca escreve nessas
+# credenciais.
+services:
+  backend:
+    volumes:
+      - ${HOME}/.aws-sentinelhealth-dev:/home/appuser/.aws:ro
+    environment:
+      AWS_SHARED_CREDENTIALS_FILE: /home/appuser/.aws/credentials
+      AWS_CONFIG_FILE: /home/appuser/.aws/config
+
+  worker:
+    volumes:
+      - ${HOME}/.aws-sentinelhealth-dev:/home/appuser/.aws:ro
+    environment:
+      AWS_SHARED_CREDENTIALS_FILE: /home/appuser/.aws/credentials
+      AWS_CONFIG_FILE: /home/appuser/.aws/config

@@ -1,0 +1,23 @@
+%% Fluxo de dados pessoais para o RIPD
+flowchart TD
+    coleta["Coleta<br/>(cadastro, upload de midia,<br/>observacao clinica)"] --> minimiza["Minimizacao<br/>(campos necessarios por finalidade)"]
+    minimiza --> pseudo["Pseudonimizacao<br/>(quando aplicavel)"]
+    pseudo --> armazenamento["Armazenamento<br/>PostgreSQL (estruturado) / S3 (midias)"]
+
+    armazenamento --> processamento["Processamento interno<br/>(regras, orquestrador, workers)"]
+    processamento --> fornecedores["Fornecedores externos<br/>(allowlist minimizada)"]
+    fornecedores --> transcribe["Amazon Transcribe<br/>(regiao AWS contratada)"]
+    fornecedores --> openai["OpenAI<br/>(projeto exclusivo, retencao controlada)"]
+
+    processamento --> resultado["Resultado estruturado<br/>+ relatorio"]
+    resultado --> revisao["Revisao profissional"]
+    revisao --> retencao["Retencao conforme<br/>tabela por categoria"]
+    retencao --> exclusao["Exclusao efetiva<br/>(banco, S3, cache, backups)"]
+
+    armazenamento -.->|acesso| auditoria["Auditoria de todo acesso"]
+    fornecedores -.->|acesso| auditoria
+    revisao -.->|decisao| auditoria
+
+    titular["Titular dos dados"] -->|exerce direitos| direitos["Fluxo de atendimento<br/>ao titular"]
+    direitos --> armazenamento
+    direitos --> fornecedores

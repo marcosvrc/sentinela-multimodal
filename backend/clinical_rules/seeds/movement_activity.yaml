@@ -1,0 +1,37 @@
+# Ver docs/CLASSIFICACAO_DADOS_CLINICOS.md secao 10.1 (Movimentacao do Paciente).
+# Requer linha de base, exercicio/procedimento esperado e limites aprovados
+# pelo especialista; sem esse contexto o resultado e Inconclusivo.
+code: movement_activity
+version: "0.1.0"
+population: adult
+status: draft
+effective_from: "2026-07-11"
+effective_to: null
+source:
+  reference: "CLASSIFICACAO_DADOS_CLINICOS.md#101-movimentacao-do-paciente"
+  approved_by: "PENDENTE_APROVACAO_CLINICA"
+exclusions:
+  - "ausencia de linha de base ou procedimento de referencia definido"
+required_inputs:
+  - movement_finding # normal | reduzido | excessivo | involuntario | ausente
+rules:
+  - id: normal
+    when: "movement_finding == 'normal'"
+    risk_level: 1
+    classification_label: "Movimento normal"
+  - id: reduced
+    when: "movement_finding == 'reduzido'"
+    risk_level: 3
+    classification_label: "Movimento reduzido"
+  - id: excessive
+    when: "movement_finding == 'excessivo'"
+    risk_level: 3
+    classification_label: "Movimento excessivo"
+  - id: involuntary
+    when: "movement_finding == 'involuntario'"
+    risk_level: 4
+    classification_label: "Movimento involuntario"
+  - id: absent
+    when: "movement_finding == 'ausente'"
+    risk_level: 6
+    classification_label: "Ausencia de movimento"

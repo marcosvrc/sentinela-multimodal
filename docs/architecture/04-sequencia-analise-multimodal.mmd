@@ -1,0 +1,39 @@
+%% Sequencia: analise multimodal ponta a ponta
+sequenceDiagram
+    actor Prof as Profissional
+    participant FE as Frontend
+    participant API as API
+    participant S3 as Amazon S3
+    participant SQS as SQS
+    participant Orq as Orquestrador
+    participant Mod as Processadores de Modalidade
+    participant Regras as Motor de Regras
+    participant LLM as LLM Consolidator
+
+    Prof->>FE: Seleciona paciente e midias
+    FE->>API: POST /analyses (cria analise)
+    API-->>FE: analysis_id=CREATED + URLs pre-assinadas
+    FE->>S3: PUT arquivos (upload direto)
+    FE->>API: Confirma uploads
+    API->>API: Valida metadados
+    API->>SQS: Publica solicitacao (QUEUED)
+    API-->>FE: status=QUEUED
+
+    SQS->>Orq: Consome mensagem
+    Orq->>Mod: Dispara processadores independentes
+    Mod->>S3: Le midia original
+    Mod->>Orq: Resultado estruturado + evidencias
+    Orq->>Regras: Aplica regras determinísticas
+    Regras-->>Orq: Classificacao de risco (por sinal)
+
+    Orq->>LLM: Solicita sintese (dados estruturados)
+    LLM-->>Orq: Resumo explicavel (nao altera risco)
+
+    Orq->>API: Atualiza estado (WAITING_REVIEW)
+    FE->>API: Consulta estado (polling)
+    API-->>FE: WAITING_REVIEW + resultado consolidado
+
+    Prof->>FE: Aceita/Corrige/Rejeita achados
+    FE->>API: Confirma relatorio
+    API->>API: COMPLETED + gera PDF
+    API-->>FE: URL de download do relatorio

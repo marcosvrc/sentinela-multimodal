@@ -1,0 +1,63 @@
+# Ver docs/CLASSIFICACAO_DADOS_CLINICOS.md secao 8 (Dor).
+# A intensidade numerica isolada NAO e suficiente para classificar urgencia;
+# fatores como localizacao toracica/abdominal, inicio subito e sintomas
+# associados podem elevar o risco independentemente do numero.
+#
+# v0.2.0: implementa a correlacao de contexto que o documento ja
+# descrevia mas nunca havia sido capturada como campo estruturado (antes
+# so existia `pain_score` isolado). `location`/`sudden_onset`/
+# `alarm_symptoms_present` agora sao contexto OBRIGATORIO (ver
+# app.observations.validation._validate_pain_context) - as duas ultimas
+# regras abaixo elevam o risco independentemente do escore numerico,
+# exatamente o exemplo do documento: "Dor toracica 5/10 com inicio
+# subito pode ser MAIS urgente que dor musculoesqueletica 8/10" (nivel 5
+# > nivel 4 de intense_pain). O motor de regras escolhe sempre o
+# risk_level mais alto entre as regras que casarem (ver
+# app.rules_engine.engine.evaluate_rule_set), entao nao ha necessidade de
+# uma logica de prioridade explicita aqui.
+code: pain
+version: "0.2.0"
+population: adult
+status: draft
+effective_from: "2026-07-18"
+effective_to: null
+source:
+  reference: "CLASSIFICACAO_DADOS_CLINICOS.md#8-dor"
+  approved_by: "PENDENTE_APROVACAO_CLINICA"
+exclusions: []
+required_inputs:
+  - pain_score # 0-10
+  - location # toracica | abdominal | cabeca | dorso | membro | outra | nao_informado
+  - sudden_onset # booleano
+  - alarm_symptoms_present # booleano (dispneia, sudorese, nausea, irradiacao etc.)
+rules:
+  - id: no_pain
+    when: "pain_score == 0"
+    risk_level: 1
+    classification_label: "Sem dor"
+  - id: mild_pain
+    when: "1 <= pain_score <= 3"
+    risk_level: 1
+    classification_label: "Dor leve"
+  - id: moderate_pain
+    when: "4 <= pain_score <= 6"
+    risk_level: 3
+    classification_label: "Dor moderada"
+  - id: intense_pain
+    when: "7 <= pain_score <= 9"
+    risk_level: 4
+    classification_label: "Dor intensa"
+  - id: unbearable_pain
+    when: "pain_score == 10"
+    risk_level: 6
+    classification_label: "Dor insuportavel"
+  - id: alarm_symptoms_elevate_risk
+    when: "alarm_symptoms_present == True"
+    risk_level: 5
+    classification_label: "Dor com sintomas de alarme associados"
+    notes: "Sintomas associados (dispneia, sudorese, nausea, irradiacao) elevam o risco independentemente do escore numerico."
+  - id: thoracic_or_abdominal_sudden_onset_elevates_risk
+    when: "(location == 'toracica' or location == 'abdominal') and sudden_onset == True"
+    risk_level: 5
+    classification_label: "Dor toracica/abdominal de inicio subito"
+    notes: "Localizacao toracica/abdominal com inicio subito eleva o risco independentemente do escore numerico (ex.: dor toracica 5/10 subita pode ser mais urgente que dor musculoesqueletica 8/10)."

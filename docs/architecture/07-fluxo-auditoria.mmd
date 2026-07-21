@@ -1,0 +1,13 @@
+%% Fluxo de auditoria
+flowchart LR
+    acao["Acao no sistema<br/>(login, leitura, escrita,<br/>upload, analise, revisao)"] --> escreve["Audit_Service<br/>escreve evento append-only"]
+    escreve --> pg[("PostgreSQL<br/>(auditoria transacional)")]
+    escreve -->|falha no registro| bloqueia["Bloqueia a operacao<br/>que originou o evento"]
+
+    pg -->|exportacao assincrona| worm[("Armazenamento<br/>imutavel / WORM")]
+    worm -->|reconciliacao periodica| reconcilia["Verificacao de integridade"]
+    worm -->|falha na exportacao| alerta["Alerta operacional"]
+
+    auditor["Auditor autorizado"] -->|busca por matricula, paciente,<br/>acao, periodo, analise| consulta["Consulta de auditoria"]
+    consulta --> pg
+    consulta -->|consulta tambem auditada| escreve

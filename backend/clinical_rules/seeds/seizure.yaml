@@ -1,0 +1,28 @@
+# Convulsao como observacao clinica ISOLADA - antes so existia dentro do
+# contexto de eventos adversos cirurgicos (surgery_adverse_events.yaml,
+# ver docs/CLASSIFICACAO_DADOS_CLINICOS.md secao 11.4). Generalizado aqui
+# para qualquer contexto de internacao (ex.: paciente com epilepsia
+# internado fora de centro cirurgico) - GAP identificado, nao consta
+# fora do modulo cirurgico no documento original.
+code: seizure
+version: "0.1.0"
+population: adult
+status: draft
+effective_from: "2026-07-18"
+effective_to: null
+source:
+  reference: "CLASSIFICACAO_DADOS_CLINICOS.md#114-eventos-adversos (generalizado para fora do contexto cirurgico)"
+  approved_by: "PENDENTE_APROVACAO_CLINICA"
+exclusions: []
+required_inputs:
+  - seizure_occurred
+rules:
+  - id: no_seizure
+    when: "seizure_occurred == False"
+    risk_level: 1
+    classification_label: "Sem convulsao"
+  - id: seizure_occurred
+    when: "seizure_occurred == True"
+    risk_level: 6
+    classification_label: "Convulsao"
+    notes: "Evento critico - mesmo nivel de risco atribuido a convulsao no contexto cirurgico (secao 11.4)."

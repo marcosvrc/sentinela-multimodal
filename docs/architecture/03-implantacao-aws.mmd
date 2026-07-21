@@ -1,0 +1,43 @@
+%% Diagrama de Implantacao AWS - SentinelHealth
+graph TB
+    internet(("Internet"))
+
+    subgraph vpc["VPC"]
+        subgraph publica["Sub-rede publica"]
+            alb["ALB"]
+        end
+
+        subgraph privada["Sub-redes privadas"]
+            subgraph ecs["ECS Fargate"]
+                apitask["Task: API"]
+                workercpu["Task: Workers CPU"]
+                workervisao["Task: Worker Visao"]
+                orquestrador["Task: Orquestrador"]
+            end
+            rds[("RDS PostgreSQL<br/>multi-AZ")]
+            sqs[("SQS + DLQ")]
+        end
+    end
+
+    s3[("S3<br/>(fora da VPC,<br/>acesso via endpoint privado)")]
+    cognito[("Cognito")]
+    ecr[("ECR<br/>imagens por commit")]
+    secretsmgr[("Secrets Manager")]
+    cloudwatch[("CloudWatch /<br/>OpenTelemetry")]
+
+    internet --> alb --> apitask
+    apitask --> rds
+    apitask --> sqs
+    apitask -.-> secretsmgr
+    apitask -.-> cognito
+    orquestrador --> sqs
+    orquestrador --> workercpu
+    orquestrador --> workervisao
+    workercpu --> rds
+    workercpu --> s3
+    workervisao --> rds
+    workervisao --> s3
+    apitask --> s3
+
+    ecs -.->|pull de imagem<br/>por commit| ecr
+    ecs -.->|logs, metricas, traces| cloudwatch

@@ -1,0 +1,75 @@
+name: sentinelhealth
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sentinel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sentinel}
+      POSTGRES_DB: ${POSTGRES_DB:-sentinelhealth}
+    ports:
+      - "5432:5432"
+    volumes:
+      - sentinelhealth_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sentinel} -d ${POSTGRES_DB:-sentinelhealth}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-sentinel}:${POSTGRES_PASSWORD:-sentinel}@postgres:5432/${POSTGRES_DB:-sentinelhealth}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/clinical_rules:/app/clinical_rules
+
+  # Worker do orquestrador (item 10): consome `analysis_queue_messages`
+  # (fila local) ou a fila SQS real (com compose.aws-dev.yaml) em loop
+  # continuo, processando cada analise submetida - sem este servico,
+  # toda analise fica parada em "Na fila" ate alguem rodar `make worker`
+  # manualmente. Reaproveita a mesma imagem do backend (nao o
+  # `Dockerfile.worker` dedicado, que hoje aponta para um modulo
+  # inexistente) so trocando o comando.
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-sentinel}:${POSTGRES_PASSWORD:-sentinel}@postgres:5432/${POSTGRES_DB:-sentinelhealth}
+      # `scripts/` nao e copiado pela imagem (Dockerfile so copia app/
+      # clinical_rules/migrations) - montado como volume abaixo; precisa
+      # estar no PYTHONPATH para "python -m scripts.run_orchestrator_worker" resolver.
+      PYTHONPATH: /app
+    command: ["uv", "run", "--no-dev", "python", "-m", "scripts.run_orchestrator_worker"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/clinical_rules:/app/clinical_rules
+      - ./backend/scripts:/app/scripts
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  sentinelhealth_postgres_data:

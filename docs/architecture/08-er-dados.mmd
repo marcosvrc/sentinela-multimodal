@@ -1,0 +1,101 @@
+%% Diagrama Entidade-Relacionamento (visao inicial do scaffold)
+erDiagram
+    INSTITUTION ||--o{ USER : emprega
+    INSTITUTION ||--o{ PATIENT : atende
+    INSTITUTION ||--o{ ANALYSIS_JOB : contem
+    PATIENT ||--o{ CLINICAL_OBSERVATION : possui
+    PATIENT ||--o{ ANALYSIS_JOB : "e alvo de"
+    ANALYSIS_JOB ||--o{ MODALITY_RESULT : produz
+    ANALYSIS_JOB ||--o{ MEDIA_ASSET : referencia
+    ANALYSIS_JOB ||--o{ FINDING : gera
+    ANALYSIS_JOB ||--|| REPORT : consolida
+    FINDING ||--o{ EVIDENCE : sustentado_por
+    FINDING ||--o| REVIEW_DECISION : recebe
+    CLINICAL_RULE_SET ||--o{ CLINICAL_RULE : versiona
+    CLINICAL_RULE ||--o{ FINDING : classifica
+    USER ||--o{ REVIEW_DECISION : registra
+    INSTITUTION ||--o{ AUDIT_EVENT : gera
+
+    INSTITUTION {
+        uuid id PK
+        string name
+    }
+    USER {
+        uuid id PK
+        uuid institution_id FK
+        string role
+    }
+    PATIENT {
+        uuid id PK
+        uuid institution_id FK
+        string medical_record_number
+        date birth_date
+    }
+    CLINICAL_OBSERVATION {
+        uuid id PK
+        uuid patient_id FK
+        string type
+        string quality
+        datetime measured_at
+    }
+    ANALYSIS_JOB {
+        uuid id PK
+        uuid patient_id FK
+        string status
+    }
+    MEDIA_ASSET {
+        uuid id PK
+        uuid analysis_job_id FK
+        string modality
+        string s3_key
+        string hash
+    }
+    MODALITY_RESULT {
+        uuid id PK
+        uuid analysis_job_id FK
+        string modality
+        string status
+        jsonb structured_result
+    }
+    FINDING {
+        uuid id PK
+        uuid analysis_job_id FK
+        string nature
+        int risk_level
+    }
+    EVIDENCE {
+        uuid id PK
+        uuid finding_id FK
+        string source_modality
+        jsonb value
+    }
+    REVIEW_DECISION {
+        uuid id PK
+        uuid finding_id FK
+        uuid reviewed_by FK
+        string decision
+        string justification
+    }
+    REPORT {
+        uuid id PK
+        uuid analysis_job_id FK
+        string state
+        string pdf_s3_key
+    }
+    CLINICAL_RULE_SET {
+        string code PK
+        string version PK
+        string status
+    }
+    CLINICAL_RULE {
+        string id PK
+        string rule_set_code FK
+        int risk_level
+    }
+    AUDIT_EVENT {
+        uuid id PK
+        uuid institution_id FK
+        string action
+        string resource
+        datetime occurred_at
+    }

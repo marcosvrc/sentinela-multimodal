@@ -1,0 +1,45 @@
+# Ver docs/CLASSIFICACAO_DADOS_CLINICOS.md secao 5 (Temperatura Corporal).
+code: temperature
+version: "0.1.0"
+population: adult
+status: draft
+effective_from: "2026-07-11"
+effective_to: null
+source:
+  reference: "CLASSIFICACAO_DADOS_CLINICOS.md#5-temperatura-corporal"
+  approved_by: "PENDENTE_APROVACAO_CLINICA"
+exclusions:
+  - "conversao automatica entre local de medicao (axilar, oral, timpanico, retal) sem protocolo validado"
+required_inputs:
+  - temperature_celsius
+  - measurement_site
+  - measurement_method
+rules:
+  - id: severe_hypothermia
+    when: "temperature_celsius <= 35.0"
+    risk_level: 6
+    classification_label: "Hipotermia grave"
+  - id: hypothermia
+    when: "35.1 <= temperature_celsius <= 36.0"
+    risk_level: 4
+    classification_label: "Hipotermia"
+  - id: normal
+    when: "36.1 <= temperature_celsius <= 37.5"
+    risk_level: 1
+    classification_label: "Normal"
+  - id: febrile_state
+    when: "37.6 <= temperature_celsius <= 38.0"
+    risk_level: 3
+    classification_label: "Estado febril"
+  - id: fever
+    when: "38.1 <= temperature_celsius <= 39.0"
+    risk_level: 4
+    classification_label: "Febre"
+  - id: high_fever
+    when: "39.1 <= temperature_celsius <= 40.0"
+    risk_level: 4
+    classification_label: "Febre alta"
+  - id: severe_hyperthermia
+    when: "temperature_celsius > 40.0"
+    risk_level: 6
+    classification_label: "Hipertermia grave"

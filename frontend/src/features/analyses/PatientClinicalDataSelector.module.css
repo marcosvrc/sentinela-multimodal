@@ -1,0 +1,59 @@
+.empty {
+  color: var(--color-text-muted);
+  font-size: 14px;
+  margin: 0;
+}
+
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.checkboxRow {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.checkboxOption {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-field);
+  background: var(--color-surface);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.checkboxOption input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary-800);
+}
+
+.checkboxOptionDisabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.itemUnavailable {
+  display: block;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-style: italic;
+  margin-top: var(--space-1);
+  max-width: 200px;
+}
+
+.bmiSummary {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}

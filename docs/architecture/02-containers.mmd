@@ -1,0 +1,42 @@
+%% Diagrama de Containers (C4 nivel 2) - SentinelHealth
+graph TB
+    subgraph cliente["Cliente"]
+        spa["Frontend SPA<br/>React + TypeScript"]
+    end
+
+    subgraph aws["AWS"]
+        alb["Application Load Balancer"]
+        api["API<br/>FastAPI (ECS Fargate)"]
+        orquestrador["Orquestrador<br/>Python + SQS"]
+        workercpu["Workers CPU<br/>audio, texto, regras,<br/>consolidacao, PDF"]
+        workervisao["Worker de visao<br/>OpenPose/YOLO (CPU)"]
+        sqs[("Amazon SQS<br/>+ DLQ")]
+        rds[("PostgreSQL<br/>(RDS)")]
+        s3[("Amazon S3")]
+        secrets[("Secrets Manager<br/>/ KMS")]
+        cognito[("Amazon Cognito")]
+    end
+
+    openai["OpenAI GPT"]
+    transcribe["Amazon Transcribe"]
+
+    spa -->|HTTPS + token OIDC| alb --> api
+    spa -->|PUT/GET com URL<br/>pre-assinada| s3
+
+    api -->|publica job| sqs
+    api -->|le/escreve| rds
+    api -->|gera URL pre-assinada| s3
+    api -->|valida token| cognito
+
+    sqs --> orquestrador
+    orquestrador --> workercpu
+    orquestrador --> workervisao
+    workercpu --> rds
+    workercpu --> s3
+    workercpu --> openai
+    workercpu --> transcribe
+    workervisao --> rds
+    workervisao --> s3
+
+    api -.-> secrets
+    workercpu -.-> secrets

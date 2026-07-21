@@ -1,0 +1,31 @@
+# Ver docs/CLASSIFICACAO_DADOS_CLINICOS.md secao 10.2 (Posicao e Postura Corporal).
+code: posture
+version: "0.1.0"
+population: adult
+status: draft
+effective_from: "2026-07-11"
+effective_to: null
+source:
+  reference: "CLASSIFICACAO_DADOS_CLINICOS.md#102-posicao-e-postura-corporal"
+  approved_by: "PENDENTE_APROVACAO_CLINICA"
+exclusions:
+  - "ausencia de linha de base ou procedimento de referencia definido"
+required_inputs:
+  - posture_finding # adequada | desalinhamento_leve | desalinhamento_severo | queda_ou_colapso
+rules:
+  - id: adequate
+    when: "posture_finding == 'adequada'"
+    risk_level: 1
+    classification_label: "Postura adequada"
+  - id: mild_misalignment
+    when: "posture_finding == 'desalinhamento_leve'"
+    risk_level: 3
+    classification_label: "Desalinhamento leve"
+  - id: severe_misalignment
+    when: "posture_finding == 'desalinhamento_severo'"
+    risk_level: 4
+    classification_label: "Desalinhamento severo"
+  - id: fall_or_collapse
+    when: "posture_finding == 'queda_ou_colapso'"
+    risk_level: 6
+    classification_label: "Queda ou colapso"

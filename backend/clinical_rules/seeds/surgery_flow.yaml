@@ -1,0 +1,31 @@
+# Ver docs/CLASSIFICACAO_DADOS_CLINICOS.md secao 11.2 (Fluxo Procedimental).
+code: surgery_flow
+version: "0.1.0"
+population: adult
+status: draft
+effective_from: "2026-07-11"
+effective_to: null
+source:
+  reference: "CLASSIFICACAO_DADOS_CLINICOS.md#112-fluxo-procedimental"
+  approved_by: "PENDENTE_APROVACAO_CLINICA"
+exclusions:
+  - "protocolo/fases nao definidos para a especialidade"
+required_inputs:
+  - flow_finding # normal | etapa_prolongada | sequencia_anomala | interrupcao_inesperada
+rules:
+  - id: normal
+    when: "flow_finding == 'normal'"
+    risk_level: 1
+    classification_label: "Fluxo normal"
+  - id: prolonged_step
+    when: "flow_finding == 'etapa_prolongada'"
+    risk_level: 3
+    classification_label: "Etapa prolongada"
+  - id: anomalous_sequence
+    when: "flow_finding == 'sequencia_anomala'"
+    risk_level: 4
+    classification_label: "Sequencia anomala"
+  - id: unexpected_interruption
+    when: "flow_finding == 'interrupcao_inesperada'"
+    risk_level: 6
+    classification_label: "Interrupcao inesperada"

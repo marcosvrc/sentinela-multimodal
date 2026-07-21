@@ -1,0 +1,33 @@
+# Ver docs/CLASSIFICACAO_DADOS_CLINICOS.md secao 2 (Saturacao de Oxigenio).
+code: spo2
+version: "0.1.0"
+population: adult
+status: draft
+effective_from: "2026-07-11"
+effective_to: null
+source:
+  reference: "CLASSIFICACAO_DADOS_CLINICOS.md#2-saturacao-de-oxigenio-spo2"
+  approved_by: "PENDENTE_APROVACAO_CLINICA"
+exclusions:
+  - "insuficiencia respiratoria hipercapnica confirmada (usar escala alternativa mediante decisao clinica documentada)"
+required_inputs:
+  - spo2_percent # inteiro (0-100)
+  - oxygen_in_use
+  - oxygen_scale # padrao | hipercapnica
+rules:
+  - id: normal
+    when: "spo2_percent >= 96"
+    risk_level: 1
+    classification_label: "Normal"
+  - id: mildly_reduced
+    when: "94 <= spo2_percent <= 95"
+    risk_level: 3
+    classification_label: "Levemente reduzida"
+  - id: hypoxemia
+    when: "92 <= spo2_percent <= 93"
+    risk_level: 4
+    classification_label: "Hipoxemia"
+  - id: severe_hypoxemia
+    when: "spo2_percent <= 91"
+    risk_level: 6
+    classification_label: "Hipoxemia grave"
