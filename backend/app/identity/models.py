@@ -1,17 +1,12 @@
 """Modelos de identidade, institucao (tenant) e controles de acesso reais.
 
-`Institution`/`User` seguem o espelho local original (o token Cognito traz
-apenas um `sub` verificado; instituicao e papel sempre vem daqui - ver
-`app.core.security.get_current_user`). As demais tabelas implementam os
-controles de acesso reais que dependiam de identidade real:
+`Institution`/`User` sao o espelho local de identidade - instituicao e
+papel sempre vem daqui (ver `app.core.security.get_current_user`). As
+demais tabelas implementam controles de acesso reais:
 
 - `CareUnit`/`PatientCareAssignment`: o eixo "unidade" e "vinculo
   assistencial" da autorizacao (papel + instituicao + unidade + vinculo),
   que `require_role` documentava como ainda inexistente.
-- `UserSession`: permite revogacao centralizada de uma sessao mesmo que o
-  token JWT subjacente ainda nao tenha expirado (sessoes revogaveis
-  centralmente).
-- `AuthFailedAttempt`: base para bloqueio por tentativa.
 - `BreakGlassGrant`: acesso de emergencia auditado e com prazo, para o caso
   em que um profissional precisa acessar um paciente fora do seu vinculo
   assistencial normal (break glass).
@@ -105,42 +100,6 @@ class PatientCareAssignment(Base):
         DateTime(timezone=True), server_default=func.now()
     )
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-
-class UserSession(Base):
-    """Sessao autenticada real (token Cognito), rastreada localmente para
-    permitir revogacao centralizada antes da expiracao do JWT."""
-
-    __tablename__ = "user_sessions"
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
-    )
-    session_token_id: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
-    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    last_seen_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
-    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    revoked_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    revoke_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-
-class AuthFailedAttempt(Base):
-    """Tentativa de autenticacao falha, usada para bloqueio por tentativa.
-    Append-only; nunca apagado (a contagem de
-    tentativas recentes e feita por janela de tempo, nao por reset manual)."""
-
-    __tablename__ = "auth_failed_attempts"
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    external_subject: Mapped[str] = mapped_column(String(255), nullable=False)
-    reason: Mapped[str] = mapped_column(String(100), nullable=False)
-    occurred_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
 
 
 class BreakGlassGrant(Base):

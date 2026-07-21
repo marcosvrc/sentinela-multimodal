@@ -1,11 +1,10 @@
 """Interface de fila de processamento assincrono.
 
-Duas implementacoes, mesmo padrao do adaptador de storage
-(app/storage/base.py): `LocalDbQueueAdapter` (dev/testes, tabela PostgreSQL)
-e `SqsQueueAdapter` (homologacao/producao, Amazon SQS). As mensagens
-carregam apenas identificadores e metadados minimos, nunca midia ou
-resultado clinico - o worker que consome a mensagem busca o conteudo
-completo direto do banco/storage antes de processar.
+Implementacao unica, mesmo padrao do adaptador de storage
+(app/storage/base.py): `LocalDbQueueAdapter` (tabela PostgreSQL). As
+mensagens carregam apenas identificadores e metadados minimos, nunca
+midia ou resultado clinico - o worker que consome a mensagem busca o
+conteudo completo direto do banco/storage antes de processar.
 """
 
 from __future__ import annotations

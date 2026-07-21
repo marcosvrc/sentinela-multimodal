@@ -1,15 +1,15 @@
-"""Contrato do adaptador de analise de sentimento (Amazon Comprehend
-`DetectSentiment`). Analise de sentimento, quando utilizada, e sempre
-apenas contextual e nunca determina risco clinico.
+"""Contrato do adaptador de analise de sentimento (Azure AI Language
+`SentimentAnalysis`/`KeyPhraseExtraction`). Analise de sentimento, quando
+utilizada, e sempre apenas contextual e nunca determina risco clinico.
 
 Mesmo padrao arquitetural dos demais adaptadores reais do projeto
 (`app.integrations.image_recognition`, `app.integrations.transcription`):
 o dominio (`app.processors.text`, `app.processors.audio`) depende apenas
-deste Protocol, nunca de `boto3` diretamente.
+deste Protocol, nunca do cliente HTTP diretamente.
 
-Diferente do Amazon Comprehend Medical (so ingles dos EUA, `en-US`), o
-Comprehend padrao usado aqui suporta portugues (`pt`) - por isso e viavel
-para a cadeia principal do projeto, que opera em portugues brasileiro.
+O Azure AI Language usado aqui suporta portugues (`pt`) - por isso e
+viavel para a cadeia principal do projeto, que opera em portugues
+brasileiro.
 
 Resultado sempre CONTEXTUAL: o sentimento detectado (positivo/negativo/
 neutro/misto) e um dado adicional exibido ao profissional, nunca um
@@ -39,7 +39,7 @@ class SentimentAnalysisRequest:
 @dataclass(frozen=True)
 class SentimentScore:
     """Confianca (0-1) de cada uma das quatro categorias fixas do
-    Comprehend - sempre somam ~1.0, exibidas para dar transparencia sobre
+    provedor - sempre somam ~1.0, exibidas para dar transparencia sobre
     o quao decisivo foi o sentimento dominante."""
 
     positive: float
@@ -56,18 +56,17 @@ class SentimentAnalysisResult:
     scores: SentimentScore | None = None
     error: str | None = None
     # Termos-chave identificados no texto (Azure AI Language - Key Phrase
-    # Extraction). `None` quando o provedor nao suportar essa extracao
-    # (Amazon Comprehend nao tem endpoint equivalente neste adaptador) -
-    # nunca uma lista vazia fabricada para "parecer" que a extracao
-    # rodou. Sempre CONTEXTUAL, mesmo principio do sentimento: nunca
-    # determina risco clinico nem substitui `app.clinical_nlp.
-    # text_analysis` (motor NegEx/ConText proprio, que continua sendo a
-    # fonte de termos clinicos com negacao/temporalidade/certeza).
+    # Extraction). `None` quando a extracao falhar isoladamente - nunca
+    # uma lista vazia fabricada para "parecer" que a extracao rodou.
+    # Sempre CONTEXTUAL, mesmo principio do sentimento: nunca determina
+    # risco clinico nem substitui `app.clinical_nlp.text_analysis` (motor
+    # NegEx/ConText proprio, que continua sendo a fonte de termos
+    # clinicos com negacao/temporalidade/certeza).
     key_phrases: tuple[str, ...] | None = None
 
 
 class SentimentAnalysisAdapter(Protocol):
     """Implementado por `LocalUnavailableSentimentAnalysisAdapter` (dev/
-    testes) e `AwsComprehendSentimentAdapter` (real)."""
+    testes) e `AzureLanguageSentimentAdapter` (real)."""
 
     def detect_sentiment(self, request: SentimentAnalysisRequest) -> SentimentAnalysisResult: ...

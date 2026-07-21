@@ -2,16 +2,13 @@
 Analysis 4.0 - feature `tags`).
 
 Uso de `httpx` encapsulado neste adaptador - o dominio
-(`app.processors.image`) so ve `ImageRecognitionAdapter` (Protocol), mesmo
-principio do `AwsRekognitionImageAdapter` (boto3 encapsulado la).
+(`app.processors.image`) so ve `ImageRecognitionAdapter` (Protocol), nunca
+o cliente HTTP diretamente.
 
-Diferente do Rekognition (referencia direta ao objeto no S3 via
-`S3Object`), a API de Image Analysis do Azure recebe os bytes da imagem
-diretamente no corpo da requisicao (`Content-Type: application/
-octet-stream`) - nao ha upload previo a um Blob Storage. Isso elimina a
-necessidade de gerar uma SAS URL: os bytes ja lidos pelo processador do
-storage aprovado (qualquer backend, S3 ou filesystem local) sao
-reenviados aqui.
+A API de Image Analysis do Azure recebe os bytes da imagem diretamente no
+corpo da requisicao (`Content-Type: application/octet-stream`) - nao ha
+upload previo a um Blob Storage. Os bytes ja lidos pelo processador do
+storage aprovado (filesystem local) sao reenviados aqui.
 
 **Nao exercitado contra a API real do Azure neste ambiente** (sem
 credenciais/rede nos testes automatizados) - testado com um cliente HTTP
@@ -96,9 +93,8 @@ class AzureVisionAdapter:
                 )
                 for item in tag_values
                 # Azure devolve confianca 0-1; convertido para 0-100 para
-                # manter a mesma escala do achado gravado pelo Rekognition
-                # (0-100), evitando qualquer ramo condicional no
-                # processador de imagem por provedor.
+                # manter a mesma escala (0-100) usada pelo restante do
+                # dominio.
                 if float(item["confidence"]) * 100.0 >= request.min_confidence
             ]
         except (KeyError, TypeError, ValueError) as exc:

@@ -18,24 +18,6 @@ def get_transcription_adapter() -> TranscriptionAdapter:
     if settings.transcription_provider is TranscriptionProvider.LOCAL:
         return LocalUnavailableTranscriptionAdapter()
 
-    if settings.transcription_provider is TranscriptionProvider.AWS_TRANSCRIBE:
-        if not settings.s3_media_bucket or not settings.transcription_output_bucket:
-            raise RuntimeError(
-                "transcription_provider=AWS_TRANSCRIBE exige S3_MEDIA_BUCKET e "
-                "TRANSCRIPTION_OUTPUT_BUCKET configurados."
-            )
-
-        import boto3
-
-        from app.integrations.transcription.aws_transcribe import AwsTranscribeAdapter
-
-        return AwsTranscribeAdapter(
-            transcribe_client=boto3.client("transcribe", region_name=settings.aws_region),
-            s3_client=boto3.client("s3", region_name=settings.aws_region),
-            media_bucket=settings.s3_media_bucket,
-            output_bucket=settings.transcription_output_bucket,
-        )
-
     if settings.transcription_provider is TranscriptionProvider.AZURE_SPEECH:
         if not settings.azure_speech_key or not settings.azure_speech_region:
             raise RuntimeError(

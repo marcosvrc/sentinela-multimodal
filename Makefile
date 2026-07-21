@@ -5,8 +5,7 @@
 .PHONY: setup dev stop format lint typecheck test test-integration load-test build check \
         migrate migration rules-validate rules-seed compose-up compose-down \
         codegen export-openapi seed-dev-data seed-care-units seed-employees seed-patients worker \
-        test-db-create test-db-migrate \
-        tf-fmt tf-validate tf-plan tf-apply
+        test-db-create test-db-migrate
 
 BACKEND := backend
 FRONTEND := frontend
@@ -115,7 +114,7 @@ rules-seed:
 	cd $(BACKEND) && uv run python -m clinical_rules.cli seed
 
 ## Cria (ou reaproveita) uma instituicao de desenvolvimento e imprime o ID.
-## TEMPORARIO ate existir cadastro real de instituicoes + identidade (Cognito).
+## TEMPORARIO ate existir cadastro real de instituicoes/identidade.
 seed-dev-data:
 	cd $(BACKEND) && PYTHONPATH=. uv run python -m scripts.seed_dev_data
 
@@ -142,20 +141,3 @@ compose-up:
 ## Derruba os servicos definidos no compose.yaml
 compose-down:
 	docker compose -f compose.yaml down -v
-
-## Formata os arquivos Terraform de todos os modulos e ambientes
-## (uso: make tf-fmt)
-tf-fmt:
-	terraform fmt -recursive infra/
-
-## Valida a sintaxe/schema Terraform de um ambiente (uso: make tf-validate env=homologation)
-tf-validate:
-	cd infra/environments/$(env) && terraform init -backend=false -input=false && terraform validate
-
-## Gera o plano de um ambiente (uso: make tf-plan env=homologation)
-tf-plan:
-	cd infra/environments/$(env) && terraform init -input=false && terraform plan
-
-## Aplica as mudancas de um ambiente (uso: make tf-apply env=homologation)
-tf-apply:
-	cd infra/environments/$(env) && terraform init -input=false && terraform apply

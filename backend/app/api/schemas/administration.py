@@ -38,8 +38,8 @@ class EmployeeCreate(BaseModel):
     # Conta de acesso criada/vinculada junto com o funcionario (ver
     # app.administration.service.create_employee) - `role` deve ser
     # compativel com `professional_type`
-    # (ALLOWED_ROLES_BY_PROFESSIONAL_TYPE); `external_subject` deve
-    # corresponder ao `sub` que o Cognito emitira para esta conta.
+    # (ALLOWED_ROLES_BY_PROFESSIONAL_TYPE); `external_subject` e o
+    # identificador estavel da conta de acesso (ver app.core.security).
     role: UserRole
     external_subject: str = Field(..., min_length=1, max_length=255)
 
@@ -171,9 +171,9 @@ class RollbackRuleSetRequest(BaseModel):
 
 
 class UserCreate(BaseModel):
-    """`external_subject` deve corresponder ao `sub` que o Cognito emitira
-    para esta conta (criada la via AdminCreateUser - fora deste sistema);
-    este endpoint apenas registra o espelho local de instituicao/papel."""
+    """`external_subject` e o identificador estavel da conta de acesso
+    (provisionamento real de credencial fica fora deste sistema); este
+    endpoint apenas registra o espelho local de instituicao/papel."""
 
     external_subject: str = Field(..., min_length=1, max_length=255)
     full_name: str = Field(..., min_length=1, max_length=200)
@@ -194,7 +194,3 @@ class UserRead(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
-
-
-class RevokeSessionsRequest(BaseModel):
-    reason: str = Field(..., min_length=1, max_length=500)

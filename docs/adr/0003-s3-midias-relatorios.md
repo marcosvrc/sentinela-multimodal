@@ -1,7 +1,15 @@
 # ADR 0003: S3 para midias, artefatos e relatorios
 
-**Status:** Aceito
+**Status:** Superado (ver nota abaixo)
 **Data:** 2026-07-11
+
+> **Atualizacao (2026-07-21):** o projeto passou a usar exclusivamente
+> Azure como nuvem gerenciada (Cognitive Services), removendo toda a
+> infraestrutura e adaptadores AWS. O armazenamento de midia do MVP e o
+> adaptador de filesystem local (`app.storage.local`), unico adaptador
+> real hoje. Um blob storage gerenciado (ex.: Azure Blob Storage) fica
+> registrado como evolucao futura, mas o S3 nunca sera adotado. Este ADR
+> permanece como registro historico da decisao original.
 
 ## Contexto
 

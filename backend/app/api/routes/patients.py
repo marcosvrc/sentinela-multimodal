@@ -245,9 +245,8 @@ def create_break_glass_grant(
 
     Limite de taxa mais restrito (`Settings.rate_limit_auth`, nao o
     `rate_limit_default` global): esta e a unica acao de elevacao de acesso
-    exposta diretamente por esta API (o login/MFA em si acontece no
-    Cognito, fora deste backend), entao e o alvo mais provavel de abuso por
-    forca bruta/enumeracao de pacientes.
+    exposta diretamente por esta API, entao e o alvo mais provavel de
+    abuso por forca bruta/enumeracao de pacientes.
     """
     patients_service.get_patient(db, current_user.institution_id, patient_id)
     settings = get_settings()

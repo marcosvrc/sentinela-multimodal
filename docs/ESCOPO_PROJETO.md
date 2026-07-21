@@ -23,7 +23,7 @@ O sistema deve ser capaz de:
 - Analisar vídeos de cirurgias ou sessões de fisioterapia para identificar padrões anômalos
 - Processar gravações de voz de pacientes em consultas, detectando sintomas relacionados à fala (fadiga, disartria)
 - Detectar anomalias em sinais vitais, prescrições e evolução clínica; no MVP, gerar alertas no fluxo sob demanda
-- Integrar todos os processamentos com serviços gerenciados em nuvem (AWS)
+- Integrar todos os processamentos com serviços gerenciados em nuvem (Azure Cognitive Services)
 
 ---
 
@@ -40,7 +40,7 @@ O sistema deve ser capaz de:
 - O risco clínico será calculado por regras determinísticas, versionadas e aprovadas; o LLM não será a fonte de verdade da classificação.
 - O profissional deverá visualizar dados de origem, regras acionadas, resultados dos modelos e limitações antes de confirmar o relatório.
 - Resultados com baixa confiança, dados conflitantes ou informações obrigatórias ausentes serão marcados como **inconclusivos** e não como normais.
-- Falhas de AWS, OpenAI ou dos modelos multimodais não podem impedir o registro clínico nem ocultar alertas determinísticos já identificados.
+- Falhas do Azure, OpenAI ou dos modelos multimodais não podem impedir o registro clínico nem ocultar alertas determinísticos já identificados.
 - Toda classificação representa apoio à triagem e deve seguir o protocolo institucional vigente.
 
 ---
@@ -76,7 +76,7 @@ O processamento deverá correlacionar eventos ao longo do tempo, preservando tim
 | ------------- | -------------------------------------------------------------------------------- |
 | Entrada       | Áudios de consultas médicas                                                      |
 | Processamento | Detecção de alterações vocais indicativas de condições médicas (cansaço, dispneia) |
-| Serviço AWS no MVP | Amazon Transcribe padrão, batch, idioma `pt-BR`                              |
+| Serviço de nuvem no MVP | Azure AI Speech (Fast Transcription API), idioma `pt-BR`                |
 | Saída         | Transcrição, termos clínicos candidatos e rascunho de nota clínica para revisão   |
 
 Análise de sentimento, quando utilizada, será apenas contextual e nunca determinará risco clínico. Alterações vocais deverão ser apresentadas como observações ou hipóteses, não como diagnóstico.
@@ -342,8 +342,8 @@ A tela mostrará o mínimo necessário. Nome, conteúdo clínico integral e valo
 | Frontend | React com TypeScript |
 | Estilo | CSS Modules, CSS responsivo e acessível, sem biblioteca visual obrigatória |
 | Banco principal | PostgreSQL para dados transacionais, estados, resultados e auditoria append-only |
-| Armazenamento de objetos | Amazon S3 para áudio, vídeo, imagem, artefatos intermediários e PDFs |
-| Mensageria | Amazon SQS com fila de mensagens não processadas (DLQ) |
+| Armazenamento de objetos | Filesystem local (MVP); adaptador substituível por um blob storage gerenciado (ex.: Azure Blob Storage) sem alterar o domínio |
+| Mensageria | Fila em tabela PostgreSQL (MVP); adaptador substituível por um serviço de fila gerenciado sem alterar o domínio |
 | Containers | Docker; imagens separadas para API e workers quando necessário |
 | Testes backend | Pytest, testes de integração e contratos de fornecedores |
 
@@ -353,22 +353,27 @@ Os requisitos detalhados de interface, rotas, componentes, responsividade, acess
 
 ### 6.2 Integrações e Serviços
 
+A única nuvem gerenciada utilizada pelo projeto é a **Microsoft Azure**
+(Cognitive Services). Não há dependência de nenhum serviço AWS gerenciado
+no código da aplicação nem na infraestrutura.
+
 | Serviço/Ferramenta     | Uso                                              |
 | ---------------------- | ------------------------------------------------ |
-| Amazon S3 | Armazenamento criptografado de mídias, artefatos e relatórios |
-| Amazon SQS | Desacoplamento entre API e processamento assíncrono |
-| Orquestrador Python + Amazon SQS | Coordenação do pipeline multimodal no MVP |
-| Amazon ECS | Execução da API e dos workers em containers |
-| Amazon Transcribe padrão (`pt-BR`, batch) | Transcrição dos áudios armazenados no S3 |
+| Azure AI Speech (Fast Transcription API) | Transcrição dos áudios (`pt-BR`) |
+| Azure AI Language | Análise de sentimento e extração de termos-chave, sempre contextual |
+| Azure AI Vision | Reconhecimento de rótulos genéricos em imagem, enriquecimento opcional |
 | OpenAI (GPT) | Síntese e explicação de resultados estruturados via adaptador |
-| OpenPose | Candidato para análise postural em worker de vídeo |
-| YOLOv8 | Candidato para detecção em worker de vídeo/imagem |
-| Provedor OIDC | Amazon Cognito em User Pool exclusivo do projeto |
-| AWS KMS e Secrets Manager | Chaves de criptografia e segredos de aplicação |
-| CloudWatch/OpenTelemetry | Logs, métricas, traces e alertas operacionais |
+| OpenPose | Worker self-hosted de análise postural em vídeo (não é serviço de nuvem gerenciado) |
+| YOLOv8 | Worker self-hosted de detecção em vídeo/imagem (não é serviço de nuvem gerenciado) |
 | HL7 FHIR | Padrão candidato para interoperabilidade futura com prontuários e sistemas hospitalares |
 
-Para a entrega do MVP, Amazon Comprehend Medical e AWS HealthScribe não serão utilizados, pois a cadeia principal opera em português brasileiro e esses serviços não são necessários para demonstrar o fluxo. O Amazon Transcribe padrão será usado em modo batch com `pt-BR`, condicionado a uma prova de conceito de qualidade, latência e custo. Se a prova falhar, o adaptador permitirá substituição sem alterar o domínio.
+Para a entrega do MVP, serviços que exigem inglês dos EUA (`en-US`) e não
+suportam `pt-BR` (ex.: Azure Health Bot/Text Analytics for Health) não
+serão utilizados, pois a cadeia principal opera em português brasileiro.
+Cada integração real fica isolada em um adaptador (`Protocol` + fábrica
+por configuração/feature flag); o domínio nunca importa o SDK/cliente
+HTTP do provedor diretamente, permitindo substituição sem alterar o
+domínio.
 
 ### 6.2.1 Interoperabilidade Futura com HL7 FHIR
 
@@ -389,76 +394,39 @@ HL7 FHIR permanecerá apenas no roadmap e não será implementado no primeiro MV
 
 Antes de implementar a integração deverão ser definidos versão FHIR, perfis, terminologias, identificadores institucionais, provenance, validação, autorização, auditoria e tratamento de erros. O modelo interno do domínio não deverá depender diretamente das classes de uma biblioteca FHIR.
 
-### 6.2.2 Estratégia de Acesso aos Serviços AWS
+### 6.2.2 Estratégia de Acesso aos Serviços de Nuvem
 
-CLI, SDK, Terraform e chamadas HTTP terão finalidades distintas e não serão tratados como mecanismos intercambiáveis.
+O MVP roda 100% local (Docker Compose + PostgreSQL) e não provisiona
+infraestrutura de nuvem. As integrações reais com Azure Cognitive
+Services (Speech, Language, Vision) são chamadas HTTP diretas (via
+`httpx`), sem SDK proprietário — cada serviço expõe uma API REST simples
+o suficiente para não justificar uma dependência de SDK.
 
-| Contexto | Mecanismo obrigatório/preferencial | Finalidade |
-| --- | --- | --- |
-| Backend e workers | AWS SDK for Python (`boto3`) | Chamadas AWS executadas pela aplicação |
-| Frontend para S3 | HTTP `PUT`/`GET` com URL pré-assinada | Transferência direta de mídias e relatórios autorizados |
-| Infraestrutura | Terraform AWS Provider | Criar e alterar recursos, políticas e configurações |
-| Desenvolvimento local | AWS CLI v2 + IAM Identity Center/perfil | Autenticação, diagnóstico e testes manuais |
-| Operação administrativa | AWS CLI v2 ou scripts controlados | Inspeção e ações pontuais autorizadas |
-| CI/CD | Terraform e ferramentas AWS com OIDC | Plan, deploy e verificações automatizadas |
+#### Uso das integrações na aplicação
 
-#### Uso do SDK na Aplicação
+- As chamadas de runtime a Azure AI Speech/Language/Vision são feitas via `httpx`, encapsuladas em adaptadores de infraestrutura (`app.integrations.*`).
+- Módulos de domínio dependem apenas de interfaces (`Protocol`) como `TranscriptionAdapter`, `SentimentAnalysisAdapter` e `ImageRecognitionAdapter`; nenhum módulo de domínio importa o cliente HTTP ou tipos específicos do provedor diretamente.
+- Cada adaptador real é selecionado por configuração (`.env`) ou feature flag (banco, mutável em runtime pela tela de administração); o adaptador `LOCAL` (sempre honesto sobre não ter motor real) é o padrão de desenvolvimento/testes.
+- Erros do provedor são convertidos para um resultado interno estável (`status=FAILED`/`UNAVAILABLE` com motivo), nunca propagados crus nem expostos ao frontend com detalhes sensíveis (chave, endpoint completo).
+- Chaves e endpoints do Azure nunca têm valor default no código; vêm exclusivamente de variáveis de ambiente (`AZURE_SPEECH_KEY`, `AZURE_LANGUAGE_KEY`, `AZURE_VISION_KEY` e respectivos endpoints/regiões), nunca commitadas.
 
-- As chamadas de runtime a S3, SQS, Secrets Manager, Transcribe e demais serviços utilizados serão realizadas com `boto3`.
-- O SDK ficará encapsulado em adaptadores de infraestrutura; módulos de domínio dependerão de interfaces como `ObjectStorage`, `MessageQueue`, `WorkflowOrchestrator` e `TranscriptionProvider`.
-- Nenhum módulo de domínio importará diretamente `boto3` ou tipos específicos da AWS.
-- Clientes do SDK serão criados na inicialização do processo, configurados e reutilizados, evitando criação por item processado sem necessidade.
-- Cada cliente terá região explícita, timeouts, política de retry, limite de tentativas e observabilidade configurados.
-- Erros do SDK serão convertidos para erros internos estáveis, sem expor mensagens, ARNs, buckets ou detalhes sensíveis ao frontend.
-- Operações serão idempotentes quando suportadas e carregarão identificadores de correlação.
-- A aplicação não executará comandos `aws` por `subprocess`, shell ou mecanismo equivalente.
+#### Armazenamento e upload
 
-#### Frontend e URLs Pré-assinadas
-
-- O frontend não utilizará AWS CLI nem receberá chaves IAM.
-- Para upload/download autorizado, a API gerará URL pré-assinada e cabeçalhos obrigatórios; o navegador executará a transferência por HTTP diretamente com o S3.
-- A API confirmará e validará o objeto antes de publicá-lo para processamento.
-- URLs pré-assinadas não serão persistidas no frontend, logs ou auditoria e respeitarão as regras de segurança de uploads definidas neste documento.
-
-#### Credenciais e Identidade por Ambiente
-
-| Ambiente | Autenticação AWS |
-| --- | --- |
-| ECS/EC2 em produção | IAM Task Role ou Instance Role com credenciais temporárias |
-| Desenvolvimento local | IAM Identity Center/login federado e perfil AWS separado |
-| GitHub Actions | OIDC para assumir IAM Role temporária |
-| Terraform local autorizado | Perfil federado/temporário específico para infraestrutura |
-
-- Access keys permanentes não serão incluídas no código, `.env`, imagem, repositório ou secrets do CI/CD.
-- O `boto3` usará a cadeia padrão de credenciais e obterá automaticamente as credenciais temporárias do IAM Role em produção.
-- Perfis locais não serão fixados no código; sua seleção ocorrerá apenas por configuração de desenvolvimento.
-- Cada processo terá IAM Role próprio: API, worker de áudio, worker de vídeo/imagem, worker de relatório e orquestrador não compartilharão permissões amplas.
-- A `task execution role` do ECS será separada da `task role` utilizada pelo código da aplicação.
-- As políticas IAM restringirão ações, buckets/prefixos, filas, segredos, chaves e workflows ao mínimo necessário.
-
-#### Uso da AWS CLI
-
-A AWS CLI v2 será permitida para desenvolvimento, diagnóstico e operações administrativas controladas, por exemplo: validar a identidade ativa, consultar metadados, inspecionar filas e acompanhar logs. Não será dependência da imagem da aplicação nem caminho normal de integração em runtime.
-
-Comandos administrativos deverão utilizar identidade federada, ser executados por pessoal autorizado e, quando alterarem estado, estar associados a procedimento, justificativa e auditoria. Operações recorrentes ou complexas serão implementadas como código testável ou automação versionada, e não como sequência manual de comandos.
+- O adaptador de armazenamento (MVP) é filesystem local; o endpoint de upload (`PUT /media/local-storage/{token}`) usa um token assinado (HMAC) para autenticar a gravação, sem exigir sessão de usuário — a mesma disciplina que uma URL pré-assinada de um blob storage gerenciado exigiria.
+- Migrar para um blob storage gerenciado (ex.: Azure Blob Storage com SAS URL) é uma troca isolada no adaptador (`StorageAdapter`), sem alterar o domínio.
 
 ### 6.3 Infraestrutura e DevOps
 
 | Item | Descrição |
 | --- | --- |
 | Docker | Imagens reproduzíveis e imutáveis para API, workers CPU e workers GPU |
-| Registro de imagens | Amazon ECR com imagens identificadas pelo commit |
 | CI/CD | GitHub Actions para validação, build, scan e implantação |
-| IaC | Terraform com módulos, estados remotos, locking e ambientes separados |
 | Banco de dados | Alembic para migrations; cargas de referência idempotentes, sem DML manual em produção |
-| Entrada HTTP | Application Load Balancer (ALB) para a API no ECS |
-| Compute da API | ECS Fargate, sem processamento pesado na requisição HTTP |
-| Compute CPU | Workers ECS Fargate para áudio, regras, consolidação e PDF quando compatível |
+| Compute | Docker Compose local (MVP); avaliação futura de plataforma de containers gerenciada (ex.: Azure Container Apps) fora do escopo obrigatório |
 | Visão computacional no MVP | Worker Docker executando OpenPose/YOLO em CPU sobre amostras pequenas; desempenho não produtivo |
-| Compute GPU futuro | ECS sobre EC2 com GPU, fora da entrega obrigatória do MVP |
-| Banco AWS | Amazon RDS for PostgreSQL em eventual ambiente de demonstração AWS |
-| Rede | VPC, serviços e bancos em sub-redes privadas, entrada por ALB e regras mínimas de Security Group |
-| Ambientes | Local, homologação e produção isolados por configuração, credenciais e recursos |
+| Compute GPU futuro | Fora da entrega obrigatória do MVP |
+| Banco de dados gerenciado futuro | Avaliação de um Postgres gerenciado (ex.: Azure Database for PostgreSQL) em eventual ambiente de demonstração na nuvem |
+| Ambientes | Local isolado por configuração (`.env`); ambientes adicionais (homologação/produção) ficam fora do escopo obrigatório do MVP |
 | Arquitetura | Diagramas de contexto, containers, implantação e sequência do pipeline |
 
 ### 6.4 Estilo Arquitetural do Backend
@@ -471,24 +439,24 @@ O MVP adotará um **monólito modular**, evitando microserviços prematuros. A A
 | Pacientes | Cadastro, consulta e vínculo com observações clínicas |
 | Identidade e Acesso | Usuários, papéis, instituições e autorização |
 | Observações Clínicas | Registro original, unidades, contexto e histórico |
-| Mídias | Metadados, URLs assinadas, hash, retenção e vínculo com S3 |
+| Mídias | Metadados, URLs assinadas, hash, retenção e vínculo com o armazenamento de mídia |
 | Trabalhos de Análise | Criação, estados, idempotência, cancelamento e reprocessamento |
 | Orquestrador | Coordenação das modalidades e dependências do workflow |
 | Processadores de Modalidade | Áudio, vídeo, imagem e texto, isolados por interface |
 | Motor de Regras | Execução determinística de regras versionadas |
 | Consolidador de Risco | Aplicação da política de consolidação aprovada |
-| Adaptadores Externos | AWS, OpenAI, armazenamento, mensageria e identidade |
+| Adaptadores Externos | Azure, OpenAI, armazenamento, mensageria e identidade |
 | Relatórios | Composição estruturada e geração do PDF |
 | Revisão | Aceite, correção ou rejeição pelo profissional |
 | Auditoria | Registro append-only de ações e mudanças |
 
-O domínio não deverá depender diretamente de SDKs da AWS ou OpenAI. As integrações serão acessadas por interfaces, permitindo mocks, substituição de fornecedor, testes de contrato e execução local.
+O domínio não deverá depender diretamente de SDKs/clientes HTTP do Azure ou da OpenAI. As integrações serão acessadas por interfaces, permitindo mocks, substituição de fornecedor, testes de contrato e execução local.
 
 ### 6.5 Arquitetura de Persistência
 
 - O PostgreSQL será a fonte de verdade de pacientes, usuários, observações, análises, estados, resultados estruturados, versões e auditoria.
 - Arquivos binários não serão armazenados no PostgreSQL. O banco manterá apenas identificador, chave do objeto, hash, tamanho, MIME, estado e metadados.
-- O S3 armazenará originais, derivados, evidências, frames selecionados e relatórios, com criptografia, versionamento e política de ciclo de vida.
+- O armazenamento de mídia (filesystem local no MVP; blob storage gerenciado como evolução) armazenará originais, derivados, evidências, frames selecionados e relatórios, com controle de versão e política de ciclo de vida quando aplicável.
 - Uploads e downloads serão realizados por URLs pré-assinadas de curta duração; o backend não receberá arquivos grandes como intermediário.
 - As chaves de objetos serão únicas e não reutilizadas, evitando sobrescrita acidental.
 - Eventos de auditoria serão append-only. Correções gerarão novos eventos e não apagarão registros anteriores.
@@ -504,8 +472,8 @@ O domínio não deverá depender diretamente de SDKs da AWS ou OpenAI. As integr
 
 1. O frontend solicita a criação da análise.
 2. A API cria um `analysis_id` em estado `CREATED`.
-3. A API fornece URLs pré-assinadas e o frontend envia os arquivos diretamente ao S3.
-4. A API valida os metadados e publica a solicitação na fila SQS.
+3. A API fornece URLs pré-assinadas e o frontend envia os arquivos diretamente ao armazenamento de mídia.
+4. A API valida os metadados e publica a solicitação na fila de processamento.
 5. O orquestrador inicia processadores independentes para cada modalidade.
 6. Workers gravam resultados estruturados e referências de artefatos.
 7. O motor de regras e o consolidador processam os resultados disponíveis.
@@ -513,7 +481,7 @@ O domínio não deverá depender diretamente de SDKs da AWS ou OpenAI. As integr
 9. O relatório passa para revisão profissional e, depois de confirmado, o PDF é gerado.
 10. O frontend acompanha o estado por consulta periódica; notificação push poderá ser adicionada posteriormente.
 
-Mensagens transportarão somente identificadores e metadados mínimos. Mídias e respostas extensas permanecerão no S3 ou PostgreSQL.
+Mensagens transportarão somente identificadores e metadados mínimos. Mídias e respostas extensas permanecerão no armazenamento de mídia ou no PostgreSQL.
 
 ### 6.7 Máquina de Estados da Análise
 
@@ -546,27 +514,24 @@ Cada adaptador externo deverá implementar:
 - Fila DLQ para trabalhos que esgotarem as tentativas;
 - Reprocessamento manual seguro, sem duplicar resultados definitivos.
 
-O MVP utilizará orquestrador Python próprio baseado em SQS e workers. Step Functions e Celery não farão parte da entrega inicial.
+O MVP utilizará orquestrador Python próprio baseado em uma fila em tabela PostgreSQL e workers. Step Functions e Celery não farão parte da entrega inicial.
 
 ### 6.9 Separação de Cargas
 
 - A API executará somente operações rápidas e não utilizará GPU.
 - Workers CPU tratarão regras, texto, áudio compatível, consolidação e PDF.
 - O worker de visão executará OpenPose/YOLO em CPU para arquivos pequenos de demonstração; execução em GPU será uma evolução.
-- Os workers serão stateless; estado e artefatos permanecerão em PostgreSQL/S3.
+- Os workers serão stateless; estado e artefatos permanecerão em PostgreSQL/armazenamento de mídia.
 - Concorrência, CPU, memória e GPU serão configuradas por tipo de trabalho.
 - Processamento interrompido poderá ser retomado ou refeito a partir de etapas persistidas.
 
 ### 6.10 Identidade e Segurança Técnica
 
-- Autenticação será delegada ao Amazon Cognito. O ambiente de desenvolvimento poderá usar um User Pool de desenvolvimento ou adaptador local controlado para testes automatizados.
-- Tokens de acesso terão curta duração; MFA será obrigatório para todos os profissionais.
+- Autenticação real (senha/MFA/token gerenciado) fica fora do escopo do MVP; o adaptador de identidade usado é local (cabeçalho de desenvolvimento), controlado para testes automatizados. Um provedor de identidade gerenciado real é evolução futura.
 - A API verificará autenticação, papel, instituição, unidade, vínculo assistencial, recurso e ação em cada operação.
-- O frontend não armazenará credenciais AWS nem será considerado barreira de autorização.
-- Serviços usarão papéis IAM distintos e permissões mínimas por recurso e ação.
-- Segredos e chaves de API ficarão no Secrets Manager ou serviço equivalente, nunca no código, imagem ou repositório.
-- PostgreSQL, workers e serviços internos ficarão em sub-redes privadas; somente o ponto de entrada HTTP será público.
-- Todo tráfego utilizará TLS; dados em repouso serão criptografados com KMS ou mecanismo equivalente.
+- O frontend não armazenará credenciais de nuvem nem será considerado barreira de autorização.
+- Segredos e chaves de API (Azure, OpenAI) ficarão em variáveis de ambiente, nunca no código, imagem ou repositório.
+- Todo tráfego utilizará TLS quando implantado; dados em repouso deverão ser criptografados quando o ambiente evoluir para armazenamento gerenciado.
 - Uploads passarão por validação de extensão, MIME, assinatura do arquivo, tamanho e varredura antimalware antes do processamento.
 - Endpoints públicos terão rate limiting, proteção de aplicação e limites de payload.
 
@@ -626,7 +591,7 @@ API, orquestrador e workers deverão propagar os identificadores `request_id`, `
 
 Logs serão estruturados e não conterão, por padrão, nome do paciente, prontuário, transcrição, prompt completo, mídia ou resultado clínico integral. Métricas, logs e traces terão retenção e acesso definidos.
 
-**Alertas de segurança mínimos:** logins falhos em volume, MFA recusado, downloads em massa, acesso anômalo a pacientes, uso de `break glass`, tentativas entre instituições, concessão de privilégio, alteração de políticas IAM/S3/KMS, falha de auditoria, arquivos maliciosos, desativação de logs e uso anormal de fornecedores de IA.
+**Alertas de segurança mínimos:** logins falhos em volume, downloads em massa, acesso anômalo a pacientes, uso de `break glass`, tentativas entre instituições, concessão de privilégio, alteração de políticas de acesso/armazenamento, falha de auditoria, arquivos maliciosos, desativação de logs e uso anormal de fornecedores de IA.
 
 ### 6.12 CI/CD e Gestão de Versões
 
@@ -642,7 +607,7 @@ Logs serão estruturados e não conterão, por padrão, nome do paciente, prontu
 
 Modelos, prompts, regras clínicas e aplicação possuirão versões independentes. Um relatório deverá permitir reconstruir exatamente quais versões participaram da análise.
 
-O pipeline também produzirá SBOM, executará SAST, SCA e DAST conforme a etapa, verificará migrations e assinará imagens/artefatos quando suportado. Dependências terão versões fixadas; branches serão protegidas; exceções de vulnerabilidade exigirão responsável, justificativa, aprovação e prazo. O GitHub Actions usará identidade federada/OIDC em vez de credenciais AWS permanentes.
+O pipeline também produzirá SBOM, executará SAST, SCA e DAST conforme a etapa, verificará migrations e assinará imagens/artefatos quando suportado. Dependências terão versões fixadas; branches serão protegidas; exceções de vulnerabilidade exigirão responsável, justificativa, aprovação e prazo. Segredos do GitHub Actions (chaves Azure/OpenAI) ficarão em secrets do repositório, nunca hardcoded.
 
 ### 6.13 Estrutura Sugerida do Código
 
@@ -705,12 +670,12 @@ Logs não copiarão indiscriminadamente transcrições, prompts, respostas, imag
 
 ### 6.15 Continuidade e Recuperação
 
-- Definir RPO e RTO por PostgreSQL, S3, identidade, auditoria e processamento.
+- Definir RPO e RTO por PostgreSQL, armazenamento de mídia, identidade, auditoria e processamento.
 - Manter backups criptografados e cópias imutáveis em conta/papel segregado.
 - Restringir exclusão de backups e chaves e registrar todas as operações.
 - Testar restauração periodicamente e guardar evidências do teste.
-- Incluir regras, prompts, modelos, migrations, configurações e Terraform no plano de recuperação.
-- Documentar operação degradada para falha de AWS, OpenAI, região, identidade ou banco.
+- Incluir regras, prompts, modelos, migrations e configurações no plano de recuperação.
+- Documentar operação degradada para falha do Azure, OpenAI, identidade ou banco.
 - Executar exercícios de ransomware, corrupção de dados e indisponibilidade prolongada.
 - Garantir que restauração não reative usuários revogados, dados expirados ou configurações inseguras sem revisão.
 
@@ -748,7 +713,7 @@ Antes da entrada em produção deverão ser definidos numericamente: SLA, RPO, R
 - Definir tabela de retenção e descarte para originais, derivados, relatórios, prompts, respostas, logs e backups.
 - Criptografar dados em trânsito e repouso, com gestão centralizada de chaves e segredos.
 - Segregar ambientes, instituições e pacientes; usar somente dados sintéticos ou adequadamente anonimizados fora de produção.
-- Contratos e configurações de AWS/OpenAI devem prever finalidade, suboperadores, localização, retenção, exclusão e resposta a incidentes.
+- Contratos e configurações de Azure/OpenAI devem prever finalidade, suboperadores, localização, retenção, exclusão e resposta a incidentes.
 - Deve existir plano de resposta, registro e comunicação de incidentes conforme LGPD e regulamentação da ANPD.
 - Direitos dos titulares, sigilo profissional e acesso excepcional devem possuir fluxos documentados e auditáveis.
 
@@ -782,9 +747,9 @@ Consentimento não será assumido como base padrão para assistência. Quando ut
 
 ### 8.3 Retenção e Exclusão
 
-Será aprovada uma tabela por categoria, cobrindo cadastro, observações, mídias originais, derivados, transcrição, resultados, prompt/resposta, rascunhos, relatórios, auditoria, logs, backups, quarentena, uploads incompletos e DLQ.
+Será aprovada uma tabela por categoria, cobrindo cadastro, observações, mídias originais, derivados, transcrição, resultados, prompt/resposta, rascunhos, relatórios, auditoria, logs, backups, quarentena e uploads incompletos.
 
-Cada regra definirá prazo, fundamento, evento inicial, responsável, método de exclusão, exceções, `legal hold` e evidência da execução. A exclusão deverá considerar PostgreSQL, versões do S3, caches, índices, filas, backups e fornecedores. Expiração não será implementada apenas como exclusão lógica.
+Cada regra definirá prazo, fundamento, evento inicial, responsável, método de exclusão, exceções, `legal hold` e evidência da execução. A exclusão deverá considerar PostgreSQL, versões do armazenamento de mídia, caches, índices, filas, backups e fornecedores. Expiração não será implementada apenas como exclusão lógica.
 
 ### 8.4 Direitos dos Titulares e Transparência
 
@@ -794,7 +759,7 @@ Serão preparados avisos de privacidade adequados para pacientes, profissionais 
 
 ### 8.5 Fornecedores e Transferência Internacional
 
-Para AWS, OpenAI e demais operadores/suboperadores serão documentados:
+Para Azure, OpenAI e demais operadores/suboperadores serão documentados:
 
 - Serviço, finalidade, dados e população envolvidos;
 - Países/regiões de armazenamento e processamento;
@@ -828,7 +793,7 @@ O controlador manterá inventário de ativos, diagrama de fluxo de dados e respo
 - Conteúdo clínico, transcrições e documentos serão tratados como dados não confiáveis, nunca como instruções para o modelo.
 - Instruções do sistema e dados serão separados e delimitados.
 - O LLM receberá allowlist de campos minimizados e produzirá saída por schema rígido.
-- O LLM de consolidação não terá acesso livre ao banco, S3, internet ou ferramentas externas.
+- O LLM de consolidação não terá acesso livre ao banco, armazenamento de mídia, internet ou ferramentas externas.
 - Respostas serão validadas e sanitizadas antes de persistência ou renderização.
 - Serão testados prompt injection, exfiltração, conteúdo adversarial e tentativa de alterar criticidade.
 - Segredos, tokens, URLs assinadas e credenciais nunca entrarão no contexto.
@@ -886,13 +851,13 @@ O controlador manterá inventário de ativos, diagrama de fluxo de dados e respo
 - Usuários somente acessam pacientes e funções autorizados para seu papel e instituição.
 - Dados enviados a terceiros respeitam a configuração de minimização e retenção aprovada.
 - Casos clínicos de teste, inclusive limites e conflitos entre sinais, passam pela validação do responsável clínico.
-- Upload de mídia ocorre diretamente entre frontend e S3 por URL pré-assinada, sem trafegar o arquivo pelo backend.
+- Upload de mídia ocorre por URL/token assinado, sem que o arquivo trafegue desnecessariamente pelo backend como intermediário confiável.
 - A API retorna rapidamente após criar a análise e não aguarda processamento multimodal síncrono.
 - Cada modalidade possui estado próprio e pode ser repetida sem duplicar resultados ou eventos definitivos.
 - Falhas transitórias são reenfileiradas; falhas esgotadas chegam à DLQ e podem ser diagnosticadas e reprocessadas.
 - A API, os workers CPU e os workers GPU podem ser implantados e escalados independentemente.
-- PostgreSQL é a fonte de verdade transacional; mídias e PDFs ficam no S3 e não como campos binários no banco.
-- Nenhum módulo de domínio importa diretamente SDKs da AWS ou OpenAI; integrações são acessadas por adaptadores testáveis.
+- PostgreSQL é a fonte de verdade transacional; mídias e PDFs ficam no armazenamento de mídia e não como campos binários no banco.
+- Nenhum módulo de domínio importa diretamente SDKs/clientes HTTP do Azure ou da OpenAI; integrações são acessadas por adaptadores testáveis.
 - Logs correlacionam a execução ponta a ponta sem expor conteúdo clínico desnecessário.
 - Imagens de container, migrations, modelos, prompts e regras possuem versões rastreáveis.
 - O pipeline executa testes e scans antes da implantação e exige aprovação para produção.
@@ -906,19 +871,17 @@ O controlador manterá inventário de ativos, diagrama de fluxo de dados e respo
 - Logs e auditoria não contêm tokens, URLs assinadas ou conteúdo clínico integral sem necessidade aprovada.
 - Inventário de tratamento, diagrama de fluxo de dados e RIPD estão aprovados antes de dados reais.
 - Cada fornecedor possui região, retenção, suboperadores e mecanismo de transferência internacional documentados.
-- A tabela de retenção cobre banco, S3, filas, logs, backups e fornecedores e possui teste de exclusão.
+- A tabela de retenção cobre banco, armazenamento de mídia, filas, logs, backups e fornecedores e possui teste de exclusão.
 - Solicitação de titular pode localizar dados, acionar operadores e registrar o atendimento.
 - O plano de incidente contempla avaliação e comunicação no prazo regulatório e foi exercitado.
 - Backups imutáveis foram restaurados em teste e atenderam aos RPO/RTO aprovados.
 - Testes demonstram que conteúdo clínico não consegue alterar instruções, criticidade ou obter segredos do LLM.
 - O LLM não possui acesso livre a banco, objetos, internet ou ferramentas externas.
-- SAST, SCA, DAST, SBOM, scan de IaC/container e pentest não possuem achado crítico aberto sem exceção formal.
-- Chamadas AWS em runtime utilizam `boto3` encapsulado em adaptadores; a aplicação não invoca AWS CLI por shell ou `subprocess`.
-- API, orquestrador e cada tipo de worker utilizam IAM Roles distintos e com permissões mínimas.
-- Produção e CI/CD funcionam exclusivamente com credenciais temporárias; não existem access keys permanentes armazenadas.
-- O frontend transfere arquivos por HTTP com URLs pré-assinadas e nunca recebe credenciais IAM.
-- Terraform é o mecanismo autorizado para alterações reproduzíveis da infraestrutura; mudanças manuais excepcionais são detectadas e reconciliadas.
-- Clientes `boto3` possuem região, timeout, retry, correlação e tratamento de erros configurados e testados.
+- SAST, SCA, DAST, SBOM e pentest não possuem achado crítico aberto sem exceção formal.
+- Chamadas ao Azure em runtime utilizam `httpx` encapsulado em adaptadores; a aplicação não invoca CLI de nuvem por shell ou `subprocess`.
+- Credenciais Azure/OpenAI ficam exclusivamente em variáveis de ambiente, nunca hardcoded ou versionadas.
+- O frontend transfere arquivos por HTTP com token assinado (upload local) e nunca recebe credenciais de nuvem.
+- Clientes HTTP dos adaptadores reais possuem timeout, tratamento de erro e correlação configurados e testados.
 
 ### 12.1 Gate para Início do Desenvolvimento Funcional
 
@@ -969,10 +932,10 @@ sentinela-multimodal/
 - Manter `.env` e variações locais fora do versionamento.
 - Centralizar a configuração Python em classe tipada, com validação no startup e falha rápida para campos obrigatórios.
 - Separar configuração pública, configuração interna e segredos.
-- O frontend receberá apenas valores públicos, como URL da API, issuer e client ID OIDC.
-- Produção utilizará Task Definition/Parameter Store para configuração não sensível, Secrets Manager para segredos e IAM Roles para credenciais AWS.
-- Não armazenar access keys, segredos, database URLs de produção ou chaves OpenAI no repositório, build do frontend ou imagem.
-- Definir os ambientes `local`, `test`, `homologation` e `production`, com recursos, credenciais e políticas isolados.
+- O frontend receberá apenas valores públicos, como a URL da API.
+- Variáveis de ambiente (`.env`, nunca commitado) concentram configuração não sensível e segredos (chaves Azure/OpenAI) no MVP; um cofre de segredos gerenciado é evolução futura.
+- Não armazenar segredos, database URLs de produção ou chaves de API no repositório, build do frontend ou imagem.
+- Definir os ambientes `local` e `test` isolados por configuração; ambientes adicionais ficam fora do escopo obrigatório do MVP.
 - Manter tabela documentada com nome, tipo, obrigatoriedade, segredo, ambiente, valor padrão e responsável por cada configuração.
 
 #### 12.1.3 Automação Local e Build
@@ -1078,14 +1041,14 @@ Antes de consolidar a implementação, registrar Architecture Decision Records p
 
 1. Monólito modular;
 2. PostgreSQL como fonte de verdade e ausência de MongoDB no MVP;
-3. S3 para mídias e relatórios;
-4. SQS e estratégia de retry/DLQ;
-5. Orquestrador Python próprio com SQS, sem Step Functions/Celery no MVP;
-6. ECS Fargate para API/workers e visão em CPU no MVP, GPU como evolução;
-7. Amazon Cognito como provedor OIDC;
+3. Armazenamento local de mídias e relatórios no MVP;
+4. Fila em tabela PostgreSQL e estratégia de retry no MVP;
+5. Orquestrador Python próprio, sem Step Functions/Celery no MVP;
+6. Docker Compose local para API/workers e visão em CPU no MVP, GPU como evolução;
+7. Azure Cognitive Services como única nuvem gerenciada (Speech, Language, Vision);
 8. `uv` com `pyproject.toml` para dependências Python;
 9. `npm` com `package-lock.json` para dependências Node.js;
-10. Estratégia de testes locais e de contrato com AWS;
+10. Estratégia de testes locais e de contrato com Azure;
 11. Formato, versionamento e publicação das regras clínicas;
 12. Estratégia multi-tenant e Row-Level Security;
 13. Versão/perfis FHIR quando a integração entrar no roadmap;
@@ -1106,26 +1069,22 @@ As seguintes escolhas estão fechadas para evitar bifurcações durante a constr
 | Dependências Node | `npm` + `package-lock.json` |
 | Estilo | CSS Modules e tokens próprios |
 | Banco local | PostgreSQL via Docker Compose |
-| Banco AWS | RDS PostgreSQL somente para demonstração implantada |
-| Mídias local | Adaptador de filesystem para desenvolvimento/testes |
-| Mídias AWS | Amazon S3 |
-| Fila local | Adaptador in-memory para testes e worker local controlado |
-| Fila AWS | Amazon SQS + DLQ |
+| Mídias | Adaptador de filesystem local (MVP); blob storage gerenciado é evolução futura |
+| Fila | Fila em tabela PostgreSQL (MVP); fila gerenciada é evolução futura |
 | Orquestração | Worker-orquestrador Python próprio |
-| Autenticação | Amazon Cognito; adaptador local apenas para testes |
-| Entrada AWS | ALB → ECS Fargate |
-| Containers | Docker + Docker Compose local; ECR/ECS na AWS |
-| Áudio | Amazon Transcribe padrão batch em `pt-BR` |
-| NLP médico AWS | Comprehend Medical e HealthScribe fora do MVP |
-| Visão | OpenPose/YOLO em CPU com amostras pequenas |
+| Autenticação | Adaptador local (cabeçalho de desenvolvimento); identidade gerenciada real é evolução futura |
+| Containers | Docker + Docker Compose local |
+| Áudio | Azure AI Speech (Fast Transcription API) em `pt-BR` |
+| Sentimento/termos | Azure AI Language, sempre contextual |
+| Visão computacional (imagem) | Azure AI Vision, enriquecimento opcional |
+| Visão computacional (vídeo) | OpenPose/YOLO em CPU com amostras pequenas (worker self-hosted) |
 | GPU gerenciada | Fora do MVP |
 | LLM | OpenAI via adaptador, apenas síntese/explicação |
 | FHIR/PACS/DICOM | Roadmap, fora do primeiro MVP |
-| Infraestrutura | Terraform |
-| Automação | Makefile chamando `uv`, `npm`, Docker e Terraform |
+| Automação | Makefile chamando `uv`, `npm` e Docker |
 | Dados | Somente dados sintéticos na entrega e demonstração |
 
-Integrações locais simplificadas não alteram os contratos de domínio. Testes de integração separados validarão S3, SQS, Cognito e Transcribe em uma conta AWS de desenvolvimento quando credenciais estiverem disponíveis.
+Integrações locais simplificadas não alteram os contratos de domínio. Testes de integração separados validarão Azure AI Speech/Language/Vision quando credenciais estiverem disponíveis.
 
 #### 12.1.9 Documentação de Arquitetura
 
@@ -1133,7 +1092,7 @@ Criar no mínimo:
 
 - Diagrama de contexto;
 - Diagrama de containers/componentes;
-- Diagrama de implantação AWS;
+- Diagrama de implantação local (Docker Compose);
 - Sequência da análise multimodal;
 - Sequência de upload seguro;
 - Fluxo de autenticação/autorização;
@@ -1141,7 +1100,7 @@ Criar no mínimo:
 - Diagrama de dados/ER;
 - Diagrama de fluxo de dados pessoais para o RIPD.
 
-Os diagramas lógicos poderão ser mantidos em Mermaid ou C4 versionável. A vista de implantação poderá ter uma versão de apresentação com ícones oficiais AWS em diagrams.net, mantendo também uma fonte textual ou editável no repositório.
+Os diagramas lógicos poderão ser mantidos em Mermaid ou C4 versionável. Uma eventual vista de implantação em nuvem (Azure) poderá ter uma versão de apresentação com ícones oficiais em diagrams.net, mantendo também uma fonte textual ou editável no repositório.
 
 #### 12.1.10 Definition of Done do Gate
 
@@ -1168,7 +1127,7 @@ O uso de dados reais fica bloqueado até que estejam concluídos:
 5. Auditoria de leitura/download/administração com cópia imutável;
 6. Plano de incidentes, playbooks e exercício inicial;
 7. Quarentena e varredura dos uploads;
-8. Controles de minimização e retenção em AWS/OpenAI;
+8. Controles de minimização e retenção em Azure/OpenAI;
 9. Proteção e testes contra prompt injection;
 10. Backup imutável e restauração comprovada;
 11. Testes de autorização, isolamento, vulnerabilidades e pentest;
@@ -1182,13 +1141,10 @@ O uso de dados reais fica bloqueado até que estejam concluídos:
 - ANPD — materiais e guias de segurança e privacidade: <https://www.gov.br/anpd/pt-br/centrais-de-conteudo/materiais-educativos-e-publicacoes>
 - Anvisa — RDC nº 657/2022 e orientações sobre Software como Dispositivo Médico: <https://www.gov.br/anvisa/pt-br/centraisdeconteudo/publicacoes/produtos-para-a-saude/manuais/software-como-dispositivo-medico-perguntas-e-respostas/view>
 - Royal College of Physicians — NEWS2: <https://www.rcplondon.ac.uk/projects/outputs/national-early-warning-score-news-2>
-- AWS — idiomas suportados no Amazon Transcribe: <https://docs.aws.amazon.com/transcribe/latest/dg/supported-languages.html>
-- AWS — Amazon Comprehend Medical: <https://docs.aws.amazon.com/comprehend-medical/latest/dev/comprehendmedical-welcome.html>
-- AWS — uploads no S3 com URLs pré-assinadas: <https://docs.aws.amazon.com/AmazonS3/latest/userguide/PresignedUrlUploadObject.html>
-- AWS — workloads com GPU no ECS: <https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-gpu.html>
-- AWS — filas de mensagens não processadas no SQS: <https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html>
-- AWS — AWS CLI v2: <https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html>
-- AWS — credenciais e IAM Roles no Boto3: <https://docs.aws.amazon.com/boto3/latest/guide/credentials.html>
+- Azure — idiomas suportados no Azure AI Speech: <https://learn.microsoft.com/azure/ai-services/speech-service/language-support>
+- Azure — Azure AI Language (Text Analytics for Health, limitações de idioma): <https://learn.microsoft.com/azure/ai-services/language-service/text-analytics-for-health/language-support>
+- Azure — Fast Transcription API (upload direto no corpo da requisição): <https://learn.microsoft.com/azure/ai-services/speech-service/fast-transcription-create>
+- Azure — Azure AI Vision Image Analysis: <https://learn.microsoft.com/azure/ai-services/computer-vision/overview-image-analysis>
 - OpenAI — controles de dados da API: <https://platform.openai.com/docs/models/default-usage-policies-by-endpoint>
 
 As versões e a vigência dessas referências deverão ser verificadas durante a avaliação regulatória e antes de cada liberação do sistema.

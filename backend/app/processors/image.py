@@ -15,7 +15,7 @@ de "area de interesse". Cada classificacao vira um achado
 calculada nem produz diagnostico.
 
 Quando a feature flag `image_recognition_enabled` esta ligada (tela
-`/admin/feature-flags`), roda tambem Amazon Rekognition Image
+`/admin/feature-flags`), roda tambem Azure AI Vision Image Analysis
 (`app.integrations.image_recognition`) como ENRIQUECIMENTO opcional:
 rotulos genericos (ex.: "X-Ray", "Person") somados a heuristica de
 categoria acima, nunca a substituindo. Com a flag desligada (padrao) ou o
@@ -54,7 +54,6 @@ def _parse_dimensions(detected_mime_type: str | None, content: bytes) -> ImageDi
 
 
 _PROVIDER_DISPLAY_NAMES = {
-    "aws_rekognition": "Amazon Rekognition",
     "azure_vision": "Azure AI Vision",
     "local": "adaptador local",
 }
@@ -82,8 +81,8 @@ def _run_image_recognition(
     else:
         distinct_labels = ", ".join(label.label for label in result.labels) or "nenhum rotulo"
         # Guardrail de relevancia clinica (app.vision.clinical_relevance):
-        # o adaptador (Rekognition ou Azure Vision) devolve rotulos
-        # GENERICOS de objeto, sem nocao de contexto clinico - uma foto de
+        # o adaptador (Azure AI Vision) devolve rotulos GENERICOS de
+        # objeto, sem nocao de contexto clinico - uma foto de
         # paisagem seria classificada com a mesma naturalidade que uma
         # fotografia clinica se este guardrail nao existisse. Quando o
         # conteudo nao parece clinico (ou nao ha como confirmar), o
@@ -117,7 +116,7 @@ def _run_image_recognition(
                 {"label": label.label, "confidence": label.confidence} for label in result.labels
             ],
             "error": result.error,
-            # `None` quando o Rekognition nao rodou (UNAVAILABLE/FAILED) -
+            # `None` quando o adaptador nao rodou (UNAVAILABLE/FAILED) -
             # so existe avaliacao de relevancia clinica quando ha rotulos
             # para avaliar. "RELEVANT"/"NOT_RELEVANT"/"UNDETERMINED" (nunca
             # bool direto no JSON, para ficar explicito no laudo/auditoria).

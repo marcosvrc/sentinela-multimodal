@@ -1,14 +1,12 @@
-"""Adaptador de armazenamento em filesystem local (dev/testes).
+"""Adaptador de armazenamento em filesystem local.
 
-TEMPORARIO: destinado apenas a desenvolvimento/testes. Diferente do S3
-real, aqui a "URL pre-assinada" aponta para um endpoint da propria API
-(`PUT /media/local-storage/{token}`, ver app/api/routes/media.py) - o
-arquivo passa pelo processo da API neste adaptador, o que NAO reproduz a
-propriedade "o backend nunca recebe o arquivo como intermediario" que a
-transferencia direta frontend-storage exige. Isso e uma limitacao
-aceita do adaptador local, documentada aqui; o adaptador
-`S3StorageAdapter` (app/storage/s3.py) e quem implementa a transferencia
-direta frontend-armazenamento exigida em producao.
+Implementacao unica de storage deste projeto. A "URL pre-assinada" aponta
+para um endpoint da propria API (`PUT /media/local-storage/{token}`, ver
+app/api/routes/media.py) - o arquivo passa pelo processo da API neste
+adaptador, o que NAO reproduz a propriedade "o backend nunca recebe o
+arquivo como intermediario" que uma transferencia direta
+frontend-storage de nuvem (ex.: Azure Blob Storage com SAS URL) exigiria.
+Isso e uma limitacao aceita e documentada deste MVP, que roda 100% local.
 
 O token de upload e assinado (HMAC-SHA256) com `media_local_upload_secret`
 e carrega a chave do objeto e a expiracao, para que o endpoint de upload

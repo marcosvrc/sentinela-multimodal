@@ -1,5 +1,5 @@
 """Adaptador LOCAL de reconhecimento de imagem: honesto sobre nao chamar
-o Rekognition.
+o Azure AI Vision.
 
 TEMPORARIO (mesmo padrao dos demais adaptadores locais). Retornar rotulos
 fabricados seria pior do que nao rotular (viola o principio "nunca fingir"
@@ -24,8 +24,8 @@ class LocalUnavailableImageRecognitionAdapter:
             provider="local",
             labels=[],
             error=(
-                "Adaptador LOCAL nao inclui reconhecimento de imagem (Amazon "
-                "Rekognition). Enriquecimento real requer a feature flag "
-                "'image_recognition_enabled' ligada e credenciais AWS configuradas."
+                "Adaptador LOCAL nao inclui reconhecimento de imagem (Azure AI "
+                "Vision). Enriquecimento real requer a feature flag "
+                "'image_recognition_enabled' ligada e credenciais Azure configuradas."
             ),
         )

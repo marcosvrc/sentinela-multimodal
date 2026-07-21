@@ -7,17 +7,21 @@ graph TB
         sistema["Sistema de apoio a<br/>analises clinicas multimodais"]
     end
 
-    cognito[("Amazon Cognito<br/>(identidade)")]
-    s3[("Amazon S3<br/>(midias e relatorios)")]
-    transcribe["Amazon Transcribe"]
+    identidade[("Identidade<br/>(adaptador local no MVP;<br/>provedor gerenciado e evolucao futura)")]
+    storage[("Armazenamento de midia<br/>(filesystem local no MVP)")]
+    speech["Azure AI Speech<br/>(transcricao de audio)"]
+    language["Azure AI Language<br/>(sentimento/termos, contextual)"]
+    vision["Azure AI Vision<br/>(reconhecimento de imagem, opcional)"]
     openai["OpenAI GPT<br/>(sintese/explicacao)"]
     prontuario["Prontuario hospitalar<br/>(roadmap FHIR)"]
 
     profissional -->|cadastra pacientes,<br/>envia midias,<br/>revisa relatorios| sistema
     auditor -->|pesquisa eventos<br/>de auditoria| sistema
 
-    sistema -->|autentica/autoriza| cognito
-    sistema -->|armazena/le midias| s3
-    sistema -->|transcreve audio| transcribe
+    sistema -->|autentica/autoriza| identidade
+    sistema -->|armazena/le midias| storage
+    sistema -->|transcreve audio| speech
+    sistema -->|analisa sentimento/termos| language
+    sistema -->|reconhece rotulos de imagem| vision
     sistema -->|solicita sintese<br/>estruturada| openai
     sistema -.->|integracao futura,<br/>fora do MVP| prontuario

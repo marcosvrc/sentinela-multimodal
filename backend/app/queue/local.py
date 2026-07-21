@@ -1,9 +1,8 @@
 """Adaptador de fila local (dev/testes), backeado por tabela PostgreSQL.
 
-TEMPORARIO no mesmo sentido dos demais adaptadores locais (identidade,
-storage): substitui o Amazon SQS real durante o desenvolvimento. Usa uma
-tabela em vez de fila em memoria de processo porque workers sao stateless
-por design (estado e artefatos permanecem em PostgreSQL/S3, nunca em
+Implementacao unica de fila deste projeto. Usa uma tabela em vez de fila
+em memoria de processo porque workers sao stateless por design (estado e
+artefatos permanecem em PostgreSQL/filesystem, nunca em
 memoria do worker) e o dev precisa poder reiniciar a API/worker sem perder
 mensagens em transito.
 

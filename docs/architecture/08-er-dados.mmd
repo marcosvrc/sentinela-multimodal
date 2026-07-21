@@ -47,7 +47,7 @@ erDiagram
         uuid id PK
         uuid analysis_job_id FK
         string modality
-        string s3_key
+        string storage_key
         string hash
     }
     MODALITY_RESULT {
@@ -80,7 +80,7 @@ erDiagram
         uuid id PK
         uuid analysis_job_id FK
         string state
-        string pdf_s3_key
+        string pdf_storage_key
     }
     CLINICAL_RULE_SET {
         string code PK

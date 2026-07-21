@@ -31,7 +31,6 @@ from app.api.schemas.administration import (
     MedicalSpecialtyRead,
     MedicalSpecialtyUpdate,
     PublishRuleSetRequest,
-    RevokeSessionsRequest,
     RollbackRuleSetRequest,
     UserRead,
     UserUpdate,
@@ -71,13 +70,8 @@ def update_feature_flags(
     current_user: AuthenticatedUser = Depends(_require_admin),
 ) -> FeatureFlagsRead:
     changes = data.model_dump(exclude_unset=True)
-    for enum_field in (
-        "llm_provider",
-        "image_recognition_provider",
-        "sentiment_analysis_provider",
-    ):
-        if enum_field in changes and changes[enum_field] is not None:
-            changes[enum_field] = changes[enum_field].value
+    if "llm_provider" in changes and changes["llm_provider"] is not None:
+        changes["llm_provider"] = changes["llm_provider"].value
     flags = feature_flags_service.update_feature_flags(
         db,
         actor=current_user.external_subject,
@@ -480,22 +474,6 @@ def update_user(
         actor=current_user.external_subject,
     )
     return UserRead.model_validate(user)
-
-
-@router.post("/users/{user_id}/revoke-sessions", status_code=204)
-def revoke_user_sessions(
-    user_id: uuid.UUID,
-    data: RevokeSessionsRequest,
-    db: Session = Depends(get_db_session),
-    current_user: AuthenticatedUser = Depends(_require_admin),
-) -> None:
-    administration_service.revoke_user_sessions(
-        db,
-        current_user.institution_id,
-        user_id,
-        actor=current_user.external_subject,
-        reason=data.reason,
-    )
 
 
 # --- Unidades assistenciais --------------------------------------------------

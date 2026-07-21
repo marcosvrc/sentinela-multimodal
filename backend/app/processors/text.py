@@ -16,7 +16,7 @@ nunca uma classificacao de risco (o motor de regras, `app.rules_engine`,
 continua sendo a unica fonte de risco).
 
 Quando a feature flag `sentiment_analysis_enabled` esta ligada (tela
-`/admin/feature-flags`), roda tambem Amazon Comprehend `DetectSentiment`
+`/admin/feature-flags`), roda tambem Azure AI Language `SentimentAnalysis`
 (`app.integrations.sentiment_analysis`) sobre o mesmo texto - sempre
 CONTEXTUAL (nunca determina risco clinico por si so), gravado como achado
 `MODEL_OBSERVATION` proprio. Como `app.risk_consolidation.service.
@@ -51,7 +51,6 @@ class TextContentMissingError(Exception):
 
 
 _SENTIMENT_PROVIDER_DISPLAY_NAMES = {
-    "aws_comprehend": "Amazon Comprehend",
     "azure_language": "Azure AI Language",
     "local": "adaptador local",
 }

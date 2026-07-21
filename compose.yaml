@@ -35,12 +35,11 @@ services:
       - ./backend/clinical_rules:/app/clinical_rules
 
   # Worker do orquestrador (item 10): consome `analysis_queue_messages`
-  # (fila local) ou a fila SQS real (com compose.aws-dev.yaml) em loop
-  # continuo, processando cada analise submetida - sem este servico,
-  # toda analise fica parada em "Na fila" ate alguem rodar `make worker`
-  # manualmente. Reaproveita a mesma imagem do backend (nao o
-  # `Dockerfile.worker` dedicado, que hoje aponta para um modulo
-  # inexistente) so trocando o comando.
+  # (fila local em tabela PostgreSQL) em loop continuo, processando cada
+  # analise submetida - sem este servico, toda analise fica parada em
+  # "Na fila" ate alguem rodar `make worker` manualmente. Reaproveita a
+  # mesma imagem do backend (nao o `Dockerfile.worker` dedicado, que hoje
+  # aponta para um modulo inexistente) so trocando o comando.
   worker:
     build:
       context: ./backend

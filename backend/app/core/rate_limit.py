@@ -14,8 +14,7 @@ como um WAF/Shield gerenciado.
 `rate_limit_default` se aplica a todas as rotas via `Limiter.limit`
 default; `rate_limit_auth` e aplicado explicitamente as rotas mais
 sensiveis a enumeracao/forca bruta (concessao de break glass), a unica
-acao de elevacao de acesso exposta diretamente por esta API - o login em
-si acontece no Cognito, fora deste backend.
+acao de elevacao de acesso exposta diretamente por esta API.
 """
 
 from __future__ import annotations

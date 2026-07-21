@@ -1,22 +1,21 @@
-%% Fluxo de autenticacao e autorizacao
+%% Fluxo de autenticacao e autorizacao (MVP: adaptador local de identidade)
 sequenceDiagram
     actor Prof as Profissional
     participant FE as Frontend
-    participant Cognito as Amazon Cognito
     participant API as API
 
-    Prof->>FE: Informa credenciais
-    FE->>Cognito: Autentica (usuario/senha + MFA)
-    Cognito-->>FE: Access token (curta duracao) + refresh token
-    FE->>API: Requisicao com Authorization: Bearer <token>
-    API->>Cognito: Valida assinatura/claims do token
+    Note over Prof,API: MVP: identidade resolvida por cabecalho de<br/>desenvolvimento (X-Dev-Subject) - sem senha/MFA real.<br/>Um provedor de identidade gerenciado (ex.: Azure AD/<br/>Microsoft Entra ID) e evolucao futura.
+
+    Prof->>FE: Seleciona usuario de desenvolvimento
+    FE->>API: Requisicao com X-Dev-Subject: <external_subject>
+    API->>API: Busca User pelo external_subject (institution_id, role)
     API->>API: Verifica papel, instituicao, unidade,<br/>vinculo assistencial, recurso e acao
     alt Autorizado
         API-->>FE: 200 + dados
-    else Nao autenticado
+    else Usuario ausente/inativo
         API-->>FE: 401 (sem revelar existencia do usuario)
     else Autenticado mas sem permissao
         API-->>FE: 403 + evento de auditoria
     end
 
-    Note over Prof,API: Break-glass exige reautenticacao,<br/>justificativa, prazo limitado e revisao posterior
+    Note over Prof,API: Break-glass exige justificativa,<br/>prazo limitado e revisao posterior

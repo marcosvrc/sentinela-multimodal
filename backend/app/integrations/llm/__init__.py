@@ -42,15 +42,6 @@ def get_llm_adapter(db: Session) -> LlmAdapter:
 
         return OpenAiLlmAdapter(api_key=settings.openai_api_key, model=flags.llm_openai_model)
 
-    if provider is LlmProvider.BEDROCK:
-        # Sem credencial de API externa - usa as mesmas credenciais IAM do
-        # processo ja usadas por S3/SQS/Transcribe/Rekognition (boto3),
-        # apenas a permissao bedrock:InvokeModel precisa estar concedida e
-        # o acesso ao modelo liberado no console Bedrock da conta/regiao.
-        from app.integrations.llm.bedrock_adapter import BedrockLlmAdapter
-
-        return BedrockLlmAdapter(region=settings.aws_region, model_id=flags.llm_bedrock_model)
-
     if provider is LlmProvider.GEMINI:
         # Registrado na tela de feature flags para planejamento, mas SEM
         # adaptador real implementado ainda - falha explicitamente em vez

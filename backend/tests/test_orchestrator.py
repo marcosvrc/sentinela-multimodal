@@ -470,7 +470,6 @@ def test_worker_runs_automatic_clinical_support_when_flag_enabled_and_content_re
     o worker deve gerar e persistir o resumo automaticamente no relatorio,
     sem nenhum clique no botao manual."""
     from app.feature_flags.service import get_feature_flags, update_feature_flags
-    from app.reports.models import Report
 
     probe = SessionLocal()
     try:
@@ -511,7 +510,10 @@ def test_worker_runs_automatic_clinical_support_when_flag_enabled_and_content_re
             assert outcome is not None
             assert outcome.final_status is AnalysisStatus.WAITING_REVIEW
 
-            report = session.scalar(text("SELECT clinical_support_summary FROM reports WHERE analysis_id = :id"), {"id": str(analysis_id)})
+            report = session.scalar(
+                text("SELECT clinical_support_summary FROM reports WHERE analysis_id = :id"),
+                {"id": str(analysis_id)},
+            )
             assert report is not None
             assert report["summary_text"]
         finally:

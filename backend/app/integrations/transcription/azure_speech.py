@@ -1,18 +1,16 @@
 """Adaptador real de transcricao via Azure AI Speech (Fast Transcription API).
 
 Uso de `httpx` encapsulado neste adaptador - o dominio
-(`app.processors.audio`) so ve `TranscriptionAdapter` (Protocol), mesmo
-principio do `AwsTranscribeAdapter` (boto3 encapsulado la).
+(`app.processors.audio`) so ve `TranscriptionAdapter` (Protocol), nunca o
+cliente HTTP diretamente.
 
-Diferente do Amazon Transcribe (job assincrono, batch, exige bucket S3 de
-entrada/saida), a Fast Transcription API do Azure e SINCRONA e recebe os
-bytes do audio diretamente no corpo `multipart/form-data` da requisicao
-(campo `audio`) - nao ha upload previo a um storage do provedor nem
-polling. Isso elimina a necessidade de gerar uma SAS URL do Blob Storage
-(a alternativa seria a Batch Transcription API, que exige URL publica ou
-SAS) - a Fast Transcription API aceita o arquivo aprovado lido direto do
-`StorageAdapter` do projeto (S3 ou filesystem local), qualquer que seja o
-backend configurado.
+A Fast Transcription API do Azure e SINCRONA e recebe os bytes do audio
+diretamente no corpo `multipart/form-data` da requisicao (campo `audio`)
+- nao ha upload previo a um storage do provedor nem polling. Isso
+elimina a necessidade de gerar uma SAS URL do Blob Storage (a alternativa
+seria a Batch Transcription API, que exige URL publica ou SAS) - a Fast
+Transcription API aceita o arquivo aprovado lido direto do
+`StorageAdapter` do projeto (filesystem local).
 
 Limites documentados da API: audio com no maximo 2 horas de duracao e
 250 MB de tamanho - bem acima do que este projeto trata (ver

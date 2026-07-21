@@ -4,12 +4,10 @@ Acesso as rotas de negocio restrito a medico/enfermeiro, mesmo criterio
 usado em app/api/routes/patients.py (usuarios so acessam pacientes e
 funcoes autorizadas para seu papel).
 
-A rota `PUT /media/local-storage/{token}` e a implementacao do "S3 local"
-do adaptador de desenvolvimento (app/storage/local.py): so e registrada
-quando `media_storage_backend=LOCAL` e nao usa `require_role` porque, no
-mundo real (S3), quem autentica o upload e a assinatura da propria URL
-pre-assinada - nao uma sessao de usuario. Isso replica no dev o mesmo
-modelo de confianca que o S3 tera em producao.
+A rota `PUT /media/local-storage/{token}` e a implementacao do upload
+direto do adaptador de armazenamento local (app/storage/local.py) - nao
+usa `require_role` porque quem autentica o upload e a assinatura da
+propria URL pre-assinada (token HMAC), nao uma sessao de usuario.
 """
 
 from __future__ import annotations
@@ -37,7 +35,7 @@ from app.api.schemas.media import (
 from app.clinical_support import service as clinical_support_service
 from app.core.config import get_settings
 from app.core.db import get_db_session
-from app.core.enums import StorageBackend, UserRole
+from app.core.enums import UserRole
 from app.core.errors import ApiError
 from app.core.security import AuthenticatedUser, require_patient_access, require_role
 from app.identity import service as identity_service
@@ -331,24 +329,17 @@ def list_media_assets(
     return [MediaAssetRead.model_validate(media_asset) for media_asset in media_assets]
 
 
-if get_settings().media_storage_backend is StorageBackend.LOCAL:
+@router.put("/media/local-storage/{token}", status_code=204)
+async def upload_to_local_storage(token: str, request: Request) -> Response:
+    settings = get_settings()
+    try:
+        decoded = decode_local_upload_token(token, secret=settings.media_local_upload_secret)
+    except LocalUploadTokenError as exc:
+        raise ApiError(code="INVALID_UPLOAD_TOKEN", message=str(exc), status_code=403) from exc
 
-    @router.put("/media/local-storage/{token}", status_code=204)
-    async def upload_to_local_storage(token: str, request: Request) -> Response:
-        settings = get_settings()
-        try:
-            decoded = decode_local_upload_token(token, secret=settings.media_local_upload_secret)
-        except LocalUploadTokenError as exc:
-            raise ApiError(code="INVALID_UPLOAD_TOKEN", message=str(exc), status_code=403) from exc
+    storage = get_storage_adapter()
+    assert isinstance(storage, LocalFilesystemStorageAdapter)
 
-        storage = get_storage_adapter()
-        if not isinstance(storage, LocalFilesystemStorageAdapter):
-            raise ApiError(
-                code="LOCAL_STORAGE_DISABLED",
-                message="O backend de armazenamento ativo nao e o adaptador local.",
-                status_code=404,
-            )
-
-        body = await request.body()
-        storage.write_quarantined_object(decoded.quarantine_key, body)
-        return Response(status_code=204)
+    body = await request.body()
+    storage.write_quarantined_object(decoded.quarantine_key, body)
+    return Response(status_code=204)

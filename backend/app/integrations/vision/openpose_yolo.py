@@ -1,11 +1,11 @@
 """Adaptador real de visao computacional: worker self-hosted OpenPose e/ou
-YOLOv8 em CPU. Alternativas gerenciadas da AWS foram avaliadas e
-descartadas porque o Amazon Rekognition nao oferece estimativa de pose,
+YOLOv8 em CPU. Alternativas gerenciadas de nuvem (ex.: Azure AI Vision)
+foram avaliadas e descartadas porque nao oferecem estimativa de pose,
 requisito central desta modalidade.
 
 Este adaptador NAO embute os modelos em si - orquestra tres colaboradores
-injetados no construtor (mesmo padrao de injecao de dependencia do cliente
-`boto3` falso em `AwsTranscribeAdapter`):
+injetados no construtor (mesmo padrao de injecao de dependencia do
+cliente HTTP falso em `AzureSpeechAdapter`):
 
 1. `FrameExtractor` - amostra `max_sample_frames` quadros do video (em
    producao, via `ffmpeg` instalado no container do worker).

@@ -29,12 +29,3 @@ frontend/*.tsbuildinfo
 .env.*
 !.env.example
 !*/.env.example
-
-# --- Terraform ---
-**/.terraform/
-*.tfstate
-*.tfstate.*
-*.tfvars
-!*.tfvars.example
-crash.log
-crash.*.log

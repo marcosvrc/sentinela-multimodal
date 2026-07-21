@@ -1,8 +1,8 @@
 """Extracao deterministica de metadados estruturais de midia.
 
 Nao faz reconhecimento de conteudo (nao ha transcricao de fala nem visao
-computacional aqui - isso depende de servicos externos como Amazon
-Transcribe ou um modelo de visao, integrados separadamente). O que este
+computacional aqui - isso depende de servicos externos como Azure AI
+Speech ou um modelo de visao, integrados separadamente). O que este
 modulo faz e extrair fatos estruturais reais do proprio arquivo, sem
 bibliotecas externas, para que cada modalidade produza uma avaliacao de
 qualidade genuina e independente do achado clinico (resolucao, duracao

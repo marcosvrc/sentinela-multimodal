@@ -1,17 +1,13 @@
 """Contrato do adaptador de transcricao de audio.
 
 Mesmo padrao arquitetural do adaptador de LLM (`app.integrations.llm.base`):
-o dominio (`app.processors.audio`) depende apenas deste Protocol, nunca de
-`boto3`/`httpx` diretamente - nenhum modulo de dominio importa diretamente
-boto3 ou tipos especificos da AWS. `TranscriptionRequest` carrega
-`storage_key` para o adaptador
-AWS (que referencia o objeto diretamente no S3, sem reenviar bytes) e,
-opcionalmente, `audio_bytes` para adaptadores sem integracao nativa de
-storage do provedor (Azure AI Speech - Fast Transcription API recebe o
-arquivo direto no corpo da requisicao) - o processador
-(`app.processors.audio`) ja le os bytes do storage aprovado para a analise
-acustica local, entao reaproveita-los aqui nao adiciona nenhuma leitura
-extra."""
+o dominio (`app.processors.audio`) depende apenas deste Protocol, nunca do
+cliente HTTP diretamente. `TranscriptionRequest` carrega `audio_bytes`
+porque a Azure AI Speech (Fast Transcription API) recebe o arquivo direto
+no corpo da requisicao, sem exigir um storage intermediario - o
+processador (`app.processors.audio`) ja le os bytes do storage aprovado
+para a analise acustica local, entao reaproveita-los aqui nao adiciona
+nenhuma leitura extra."""
 
 from __future__ import annotations
 
@@ -23,14 +19,13 @@ from app.core.enums import TranscriptionStatus
 
 @dataclass(frozen=True)
 class TranscriptionRequest:
-    """Referencia ao objeto de audio ja aprovado, mais os bytes quando o
-    provedor exigir upload direto (`audio_bytes`, usado apenas pelo
-    adaptador Azure - o adaptador AWS ignora este campo e usa somente
-    `storage_key`)."""
+    """`storage_key` identifica o objeto de audio ja aprovado (usado em
+    logs/auditoria); `audio_bytes` carrega o conteudo enviado diretamente
+    no corpo da requisicao a Fast Transcription API do Azure."""
 
     storage_key: str
     language_code: str
-    media_format: str  # "wav" | "mp3" | "mp4" (extensao esperada pelo Transcribe)
+    media_format: str  # "wav" | "mp3" | "mp4"
     job_name: str
     audio_bytes: bytes | None = None
 
@@ -48,6 +43,6 @@ class TranscriptionResult:
 
 class TranscriptionAdapter(Protocol):
     """Implementado por `LocalUnavailableTranscriptionAdapter` (dev/testes)
-    e `AwsTranscribeAdapter` (real)."""
+    e `AzureSpeechAdapter` (real)."""
 
     def transcribe(self, request: TranscriptionRequest) -> TranscriptionResult: ...

@@ -16,25 +16,13 @@ campo de captura (`ASSISTED_HYPOTHESIS`, nunca diagnostico - inferencias
 como dor, confusao, sangramento ou erro procedimental nao podem ser
 tratadas como diagnostico apenas com base no video).
 
-Quando a feature flag `vision_rekognition_video_enabled` esta ligada
-(tela `/admin/feature-flags`), roda tambem Amazon Rekognition Video
-(`app.integrations.video_recognition`) como fonte COMPLEMENTAR ao worker
-self-hosted acima: rotulos genericos com timestamp (ex.: "Person", "Bed"),
-gravados como achado `MODEL_OBSERVATION` SEPARADO do achado de
-pose/deteccao - o Rekognition nao faz estimativa de pose (a analise de
-pose e o requisito central desta modalidade), entao nunca substitui nem
-se mistura ao resumo do OpenPose/YOLOv8.
 """
 
 from __future__ import annotations
 
-import uuid
-
 from sqlalchemy.orm import Session
 
 from app.core.enums import FindingNature, ModalityQualityState, ModalityType, VisionAnalysisStatus
-from app.integrations.video_recognition import get_video_recognition_adapter
-from app.integrations.video_recognition.base import VideoRecognitionRequest
 from app.integrations.vision import get_vision_adapter
 from app.integrations.vision.base import VideoAnalysisRequest, VideoAnalysisResult
 from app.orchestrator.models import AnalysisModalityState
@@ -46,7 +34,6 @@ from app.processors.quality import (
     assess_duration_based_quality,
 )
 from app.storage import get_storage_adapter
-from app.vision.clinical_relevance import assess_label_clinical_relevance
 
 _ISOBMFF_MIME_TYPES = ("video/mp4", "video/quicktime")
 _MEDIA_FORMAT_BY_MIME = {"video/mp4": "mp4", "video/quicktime": "mov"}
@@ -180,81 +167,6 @@ def _record_vision_absence_hypothesis(
     db.add(hypothesis)
 
 
-def _run_video_recognition(
-    db: Session,
-    modality_state: AnalysisModalityState,
-    *,
-    storage_key: str,
-    quality_state: ModalityQualityState,
-) -> None:
-    adapter = get_video_recognition_adapter(db)
-    request = VideoRecognitionRequest(
-        storage_key=storage_key,
-        job_name=f"analysis-{modality_state.analysis_id}-video-rekognition-{uuid.uuid4().hex[:8]}",
-    )
-    result = adapter.detect_labels(request)
-
-    clinical_relevance = None
-    if result.status is VisionAnalysisStatus.UNAVAILABLE:
-        summary = f"Reconhecimento de video (Amazon Rekognition) indisponivel: {result.error}"
-    elif result.status is VisionAnalysisStatus.FAILED:
-        summary = f"Reconhecimento de video (Amazon Rekognition) falhou: {result.error}"
-    else:
-        distinct_labels = sorted({label.label for label in result.labels})
-        # Mesmo guardrail de relevancia clinica do processador IMAGE (ver
-        # `app.vision.clinical_relevance`) - rotulos genericos de video
-        # tem a mesma limitacao (nao distinguem gravacao clinica de video
-        # qualquer). Achados nao relevantes/nao avaliaveis sao informados
-        # ao usuario e excluidos das consideracoes finais.
-        clinical_relevance = assess_label_clinical_relevance(
-            tuple(label.label for label in result.labels)
-        )
-        labels_text = ", ".join(distinct_labels) or "nenhum rotulo"
-        base_summary = (
-            f"Rotulos identificados (Amazon Rekognition, complementar ao worker de pose/"
-            f"deteccao): {labels_text}."
-        )
-        if clinical_relevance.relevant in (False, None):
-            summary = f"{base_summary} AVISO: {clinical_relevance.reason}"
-        else:
-            summary = base_summary
-
-    finding = record_finding(
-        modality_state=modality_state,
-        modality_type=ModalityType.VIDEO,
-        quality_state=quality_state,
-        quality_metrics={
-            "status": result.status.value,
-            "provider": result.provider,
-            "labels": [
-                {
-                    "label": label.label,
-                    "confidence": label.confidence,
-                    "timestamp_millis": label.timestamp_millis,
-                }
-                for label in result.labels
-            ],
-            "error": result.error,
-            "clinical_relevance": (
-                {
-                    True: "RELEVANT",
-                    False: "NOT_RELEVANT",
-                    None: "UNDETERMINED",
-                }[clinical_relevance.relevant]
-                if clinical_relevance is not None
-                else None
-            ),
-            "clinical_relevance_reason": (
-                clinical_relevance.reason if clinical_relevance is not None else None
-            ),
-        },
-        quality_factors=[],
-        summary=summary,
-        nature=FindingNature.MODEL_OBSERVATION,
-    )
-    db.add(finding)
-
-
 def process_video_modality(db: Session, modality_state: AnalysisModalityState) -> None:
     media_asset = load_approved_media_asset(db, modality_state)
     storage = get_storage_adapter()
@@ -302,11 +214,5 @@ def process_video_modality(db: Session, modality_state: AnalysisModalityState) -
             content=content,
             storage_key=media_asset.storage_key,
             media_format=media_format,
-            quality_state=assessment.state,
-        )
-        _run_video_recognition(
-            db,
-            modality_state,
-            storage_key=media_asset.storage_key,
             quality_state=assessment.state,
         )

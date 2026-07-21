@@ -860,15 +860,11 @@ def rollback_rule_set(
 
 # --- Usuarios/papeis de acesso ----------------------------------------------
 #
-# Fecha a lacuna do CRUD de usuarios/papeis de acesso propriamente dito. O
-# provisionamento real de CREDENCIAL (senha/MFA) continua no Cognito, fora
-# deste modulo - aqui vive apenas o espelho local (`app.identity.models.User`)
-# que determina instituicao/papel para autorizacao, mesma tabela que
-# `app.core.security.get_current_user` sempre consultou. Criar o usuario
-# aqui e o equivalente a "AdminCreateUser" do Cognito (ver
-# `admin_create_user_config.allow_admin_create_user_only = true` no modulo
-# Terraform de identidade) - o restante do provisionamento de credencial
-# (convite, senha temporaria, MFA) acontece no proprio Cognito.
+# Fecha a lacuna do CRUD de usuarios/papeis de acesso propriamente dito.
+# Provisionamento real de CREDENCIAL (senha/MFA) fica fora do escopo deste
+# MVP - aqui vive apenas o espelho local (`app.identity.models.User`) que
+# determina instituicao/papel para autorizacao, mesma tabela que
+# `app.core.security.get_current_user` sempre consultou.
 
 
 def create_user(
@@ -967,26 +963,16 @@ def update_user_role(
     """Altera papel e/ou desativa um usuario. Desativar um usuario nunca o
     apaga (auditoria/analises passadas continuam apontando para o mesmo
     `external_subject`); apenas impede novas autenticacoes
-    (`app.core.security._get_current_user_cognito` rejeita `active=False`).
-    Qualquer mudanca de papel revoga TODAS as sessoes ativas do usuario -
-    a autorizacao de uma sessao ja aberta nunca deve ficar defasada em
-    relacao ao papel atual: sessoes devem ser revogaveis centralmente.
+    (`app.core.security.get_current_user` so resolve usuarios com
+    `active=True`, ver `app.identity.service.get_user_by_external_
+    subject` combinado com a checagem em `get_current_user`).
     """
     user = get_user(db, institution_id, user_id)
-    role_changed = role is not None and role.value != user.role
 
     if role is not None:
         user.role = role.value
     if active is not None:
         user.active = active
-
-    if role_changed or active is False:
-        identity_service.revoke_all_sessions_for_user(
-            db,
-            user_id,
-            revoked_by=actor,
-            reason="Papel alterado ou usuario desativado pela administracao.",
-        )
 
     audit_service.record_event(
         db,
@@ -1002,26 +988,3 @@ def update_user_role(
     db.commit()
     db.refresh(user)
     return user
-
-
-def revoke_user_sessions(
-    db: Session, institution_id: uuid.UUID, user_id: uuid.UUID, *, actor: str, reason: str
-) -> int:
-    get_user(db, institution_id, user_id)
-    count = identity_service.revoke_all_sessions_for_user(
-        db, user_id, revoked_by=actor, reason=reason
-    )
-    audit_service.record_event(
-        db,
-        actor=actor,
-        category=AuditCategory.AUTHORIZATION,
-        action="USER_SESSIONS_REVOKED",
-        resource_type="user",
-        resource_id=str(user_id),
-        result=AuditResult.SUCCESS,
-        institution_id=institution_id,
-        justification=reason,
-        event_metadata={"revoked_count": count},
-    )
-    db.commit()
-    return count

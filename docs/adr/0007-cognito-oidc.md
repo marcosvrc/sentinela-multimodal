@@ -1,7 +1,16 @@
 # ADR 0007: Amazon Cognito como provedor OIDC
 
-**Status:** Aceito
+**Status:** Superado (ver nota abaixo)
 **Data:** 2026-07-11
+
+> **Atualizacao (2026-07-21):** o projeto passou a usar exclusivamente
+> Azure como nuvem gerenciada, removendo toda a infraestrutura e
+> adaptadores AWS (incluindo Cognito). Autenticacao real gerenciada
+> (senha/MFA/token) ficou fora do escopo do MVP; o unico adaptador de
+> identidade hoje e o local (cabecalho `X-Dev-Subject`, dev/testes). Um
+> provedor de identidade gerenciado real (ex.: Microsoft Entra ID) fica
+> registrado como evolucao futura. Registro historico da decisao
+> original.
 
 ## Contexto
 

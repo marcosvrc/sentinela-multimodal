@@ -116,8 +116,8 @@ depois que a API e um usuário administrador clínico estiverem disponíveis.
 
 ## 7. Criar instituição e usuários de desenvolvimento
 
-Não há login real neste MVP (Amazon Cognito ainda não está integrado —
-ver `docs/governance/VALIDACAO_ESCOPO.md`). A identidade é resolvida por
+Não há login real neste MVP (autenticação de credencial/MFA fica fora do
+escopo — ver `docs/governance/VALIDACAO_ESCOPO.md`). A identidade é resolvida por
 um cabeçalho HTTP (`X-Dev-Subject`) que aponta para um usuário já
 cadastrado no banco. Crie a instituição e os cinco usuários padrão (um por
 papel):
@@ -298,9 +298,8 @@ desses processos é automático dentro dos containers.
 | Variável | Padrão local | Efeito |
 | --- | --- | --- |
 | `LLM_PROVIDER` | `LOCAL` | `OPENAI` exige `OPENAI_API_KEY` real |
-| `TRANSCRIPTION_PROVIDER` | `LOCAL` | `AWS_TRANSCRIBE` exige credenciais AWS + buckets |
+| `TRANSCRIPTION_PROVIDER` | `LOCAL` | `AZURE_SPEECH` exige `AZURE_SPEECH_KEY`/`AZURE_SPEECH_REGION` |
 | `VISION_PROVIDER` | `LOCAL` | `OPENPOSE_YOLOV8` exige o worker de vídeo com `ffmpeg`/modelos instalados |
-| `MEDIA_STORAGE_BACKEND` | `LOCAL` | `S3` exige `S3_MEDIA_BUCKET` e credenciais AWS |
 | `DATABASE_URL` | Postgres do Compose | Ajuste se usar um Postgres externo |
 
 Nenhuma dessas integrações reais é necessária para o fluxo de demonstração
@@ -346,7 +345,7 @@ rode as migrations do zero.
 
 ## 16. Documentação relacionada
 
-- [`docs/MANUAL_INSTALACAO.md`](MANUAL_INSTALACAO.md) — configuração de cada integração real (banco, Docker, AWS S3/SQS/Transcribe/Cognito, OpenAI/GPT, visão computacional) e provisionamento de infraestrutura via Terraform.
+- [`docs/MANUAL_INSTALACAO.md`](MANUAL_INSTALACAO.md) — configuração de cada integração real (banco, Docker, Azure Speech/Language/Vision, OpenAI/GPT, visão computacional self-hosted).
 - [`README.md`](../README.md) — visão geral rápida do repositório.
 - [`docs/ESCOPO_PROJETO.md`](ESCOPO_PROJETO.md) — escopo completo do produto.
 - [`docs/ESPECIFICACAO_FRONTEND.md`](ESPECIFICACAO_FRONTEND.md) — telas e contratos de frontend.

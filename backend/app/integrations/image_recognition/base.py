@@ -1,14 +1,15 @@
-"""Contrato do adaptador de reconhecimento de imagem (Amazon Rekognition
-Image - enriquecimento OPCIONAL do processamento de imagem).
+"""Contrato do adaptador de reconhecimento de imagem (Azure AI Vision
+Image Analysis - enriquecimento OPCIONAL do processamento de imagem).
 
 Mesmo padrao arquitetural dos demais adaptadores (`app.integrations.llm`,
 `app.integrations.transcription`, `app.integrations.vision`): o dominio
-(`app.processors.image`) depende apenas deste Protocol, nunca de `boto3`
-diretamente. `ImageRecognitionRequest` carrega apenas a referencia ao
-objeto ja aprovado no S3 (nunca bytes inline) - `DetectLabels` aceita uma
-referencia `S3Object` direta, entao nem o worker precisa reenviar os
-bytes que ja leu do storage (diferente do adaptador de video, que chama um
-worker self-hosted no mesmo processo).
+(`app.processors.image`) depende apenas deste Protocol, nunca do cliente
+HTTP diretamente. `ImageRecognitionRequest` carrega os bytes da imagem
+(`image_bytes`) - a Image Analysis do Azure recebe a imagem direto no
+corpo da requisicao, sem exigir um storage intermediario. O processador
+(`app.processors.image`) ja le os bytes do storage aprovado para extrair
+dimensoes/categoria, entao reaproveita-los aqui nao adiciona nenhuma
+leitura extra.
 
 Este adaptador NUNCA substitui a heuristica de categoria/regiao de
 interesse existente (`app.vision.image_category`) - apenas adiciona
@@ -26,13 +27,9 @@ from app.core.enums import VisionAnalysisStatus
 
 @dataclass(frozen=True)
 class ImageRecognitionRequest:
-    """Referencia ao objeto de imagem ja aprovado (`storage_key`, usado
-    pelo adaptador AWS que referencia o objeto direto no S3) mais,
-    opcionalmente, os bytes (`image_bytes`, usado apenas pelo adaptador
-    Azure - Image Analysis recebe a imagem direto no corpo da
-    requisicao). O processador (`app.processors.image`) ja le os bytes do
-    storage aprovado para extrair dimensoes/categoria, entao reaproveita-
-    los aqui nao adiciona nenhuma leitura extra."""
+    """`storage_key` identifica o objeto de imagem ja aprovado (usado em
+    logs/auditoria); `image_bytes` carrega o conteudo enviado diretamente
+    no corpo da requisicao a Image Analysis do Azure."""
 
     storage_key: str
     min_confidence: float = 55.0
@@ -41,8 +38,8 @@ class ImageRecognitionRequest:
 
 @dataclass(frozen=True)
 class ImageLabelFinding:
-    """Um rotulo generico devolvido pelo Rekognition, com a confianca
-    reportada pelo servico - nunca reinterpretado como achado clinico."""
+    """Um rotulo generico devolvido pelo servico de visao, com a
+    confianca reportada - nunca reinterpretado como achado clinico."""
 
     label: str
     confidence: float
@@ -58,6 +55,6 @@ class ImageRecognitionResult:
 
 class ImageRecognitionAdapter(Protocol):
     """Implementado por `LocalUnavailableImageRecognitionAdapter` (dev/
-    testes) e `AwsRekognitionImageAdapter` (real)."""
+    testes) e `AzureVisionAdapter` (real)."""
 
     def detect_labels(self, request: ImageRecognitionRequest) -> ImageRecognitionResult: ...

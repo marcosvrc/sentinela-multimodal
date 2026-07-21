@@ -1,17 +1,17 @@
 """Guardrail de relevancia clinica para rotulos genericos vindos de
-reconhecimento de imagem/video (Amazon Rekognition Image/Video como
-ENRIQUECIMENTO opcional, nunca substituindo a heuristica principal).
+reconhecimento de imagem (Azure AI Vision como ENRIQUECIMENTO opcional,
+nunca substituindo a heuristica principal).
 
-O Rekognition (`app.integrations.image_recognition`, `app.integrations.
-video_recognition`) devolve rotulos GENERICOS de reconhecimento de objeto
-("Person", "Car", "Mountain", "Skin" etc.) sem qualquer nocao de relevancia
-CLINICA - ele nao sabe distinguir uma fotografia clinica de uma foto de
-paisagem. Diferente do processador de TEXTO (`app.clinical_nlp.
-text_analysis`), que so gera achado quando encontra um termo de uma lista
-curada de vocabulario clinico (e por isso e seguro por construcao), os
-rotulos de imagem/video sao abertos e SEM curadoria - por isso precisam
-deste guardrail explicito antes de entrarem nas consideracoes finais
-(resumo de apoio a analise clinica, `app.clinical_support.service`).
+O Azure AI Vision (`app.integrations.image_recognition`) devolve rotulos
+GENERICOS de reconhecimento de objeto ("Person", "Car", "Mountain",
+"Skin" etc.) sem qualquer nocao de relevancia CLINICA - ele nao sabe
+distinguir uma fotografia clinica de uma foto de paisagem. Diferente do
+processador de TEXTO (`app.clinical_nlp.text_analysis`), que so gera
+achado quando encontra um termo de uma lista curada de vocabulario
+clinico (e por isso e seguro por construcao), os rotulos de imagem sao
+abertos e SEM curadoria - por isso precisam deste guardrail explicito
+antes de entrarem nas consideracoes finais (resumo de apoio a analise
+clinica, `app.clinical_support.service`).
 
 Este modulo e HONESTO sobre sua propria limitacao: e uma heuristica de
 lista de palavras-chave, nao um classificador de conteudo clinico treinado
@@ -137,7 +137,7 @@ class ClinicalRelevanceAssessment:
 
 
 def assess_label_clinical_relevance(labels: tuple[str, ...]) -> ClinicalRelevanceAssessment:
-    """Avalia se os rotulos genericos (Amazon Rekognition) sugerem conteudo
+    """Avalia se os rotulos genericos (Azure AI Vision) sugerem conteudo
     clinicamente relevante. Heuristica de palavra-chave, nao um
     classificador de conteudo clinico treinado - ver limitacoes no
     docstring do modulo."""

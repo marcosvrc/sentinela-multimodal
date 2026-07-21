@@ -32,7 +32,6 @@ _EDITABLE_FIELDS = (
     "llm_provider_enabled",
     "llm_provider",
     "llm_openai_model",
-    "llm_bedrock_model",
     "llm_gemini_model",
     "modality_audio_enabled",
     "modality_video_enabled",
@@ -40,10 +39,7 @@ _EDITABLE_FIELDS = (
     "vision_detection_enabled",
     "vision_pose_enabled",
     "image_recognition_enabled",
-    "image_recognition_provider",
-    "vision_rekognition_video_enabled",
     "sentiment_analysis_enabled",
-    "sentiment_analysis_provider",
     "auto_clinical_support_enabled",
 )
 

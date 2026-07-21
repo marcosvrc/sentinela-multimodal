@@ -8,15 +8,15 @@ referencia ao objeto de video ja aprovado (nunca os bytes inline em log ou
 mensagem de fila), mesmo principio de minimizacao usado no LLM e na
 transcricao.
 
-Ao contrario do adaptador de transcricao (que chama um servico AWS via
-`boto3`), o adaptador real desta modalidade e um worker self-hosted
-(OpenPose + YOLOv8 em CPU) - decisao tomada apos avaliar o Amazon
-Rekognition, que nao oferece estimativa de pose. Por isso o `Protocol` de
-mais baixo nivel (`PoseEngine`,
-`DetectionEngine`, `FrameExtractor`) tambem fica aqui, permitindo testar a
-orquestracao do adaptador real com engines falsas injetadas - mesmo padrao
-de injecao de dependencia usado no cliente `boto3` falso do
-`AwsTranscribeAdapter`.
+Ao contrario do adaptador de transcricao (que chama um servico de nuvem
+gerenciado via REST), o adaptador real desta modalidade e um worker
+self-hosted (OpenPose + YOLOv8 em CPU) - decisao tomada apos avaliar
+servicos gerenciados de visao (ex.: Azure AI Vision), que nao oferecem
+estimativa de pose. Por isso o `Protocol` de mais baixo nivel
+(`PoseEngine`, `DetectionEngine`, `FrameExtractor`) tambem fica aqui,
+permitindo testar a orquestracao do adaptador real com engines falsas
+injetadas - mesmo padrao de injecao de dependencia usado no cliente HTTP
+falso do `AzureSpeechAdapter`.
 """
 
 from __future__ import annotations
@@ -29,9 +29,7 @@ from app.core.enums import VisionAnalysisStatus
 
 @dataclass(frozen=True)
 class VideoAnalysisRequest:
-    """Diferente de `TranscriptionRequest` (que so leva a referencia no S3,
-    porque quem le o objeto e o servico AWS do outro lado da rede), aqui o
-    proprio worker de video e quem extrai os quadros - o processador
+    """O proprio worker de video e quem extrai os quadros - o processador
     (`app.processors.video`) ja leu o objeto aprovado do storage para
     calcular a duracao estrutural, entao os bytes sao passados diretamente
     (chamada dentro do mesmo processo, nao uma mensagem de fila nem uma

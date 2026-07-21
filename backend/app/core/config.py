@@ -15,9 +15,7 @@ from pydantic import Field, PostgresDsn, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 from app.core.enums import (
-    AuthProvider,
     LlmProvider,
-    StorageBackend,
     TranscriptionProvider,
     VisionProvider,
 )
@@ -34,8 +32,8 @@ class Settings(BaseSettings):
     """Configuracao da API e dos workers.
 
     Valores sensiveis (chaves, segredos) nunca devem ter default neste
-    arquivo; em producao vem do Secrets Manager / variaveis de ambiente
-    injetadas pela Task Definition do ECS.
+    arquivo; em producao vem de variaveis de ambiente injetadas pela
+    plataforma de implantacao.
     """
 
     model_config = SettingsConfigDict(
@@ -65,22 +63,11 @@ class Settings(BaseSettings):
         default_factory=lambda: ["http://localhost:5173"]
     )
 
-    # --- AWS (regiao explicita, sem access keys fixas no codigo) ---
-    aws_region: str = "us-east-1"
-    s3_media_bucket: str | None = None
-    sqs_analysis_queue_url: str | None = None
-    sqs_analysis_dlq_url: str | None = None
-
-    # --- Armazenamento de midia ---
-    # LOCAL (filesystem, dev/testes) por padrao; S3 exige `s3_media_bucket`
-    # configurado. Ver app/storage/.
-    media_storage_backend: StorageBackend = StorageBackend.LOCAL
+    # --- Armazenamento de midia (filesystem local) ---
     media_local_storage_root: str = "./.local-media"
     media_upload_url_ttl_seconds: int = 900
-    # Segredo usado apenas pelo adaptador LOCAL para assinar as URLs de
-    # upload simuladas (HMAC). Nunca usado em producao (backend S3 usa as
-    # credenciais IAM do processo via boto3); tem default de desenvolvimento
-    # porque so e valido quando media_storage_backend=LOCAL.
+    # Segredo usado pelo adaptador LOCAL para assinar as URLs de upload
+    # simuladas (HMAC).
     media_local_upload_secret: str = "dev-only-local-upload-secret-nao-usar-em-producao"
 
     # --- LLM de consolidacao ---
@@ -94,19 +81,15 @@ class Settings(BaseSettings):
 
     # --- Transcricao de audio ---
     # LOCAL (sem motor de ASR, retorna UNAVAILABLE honesto) por padrao;
-    # AWS_TRANSCRIBE exige s3_media_bucket e transcription_output_bucket;
     # AZURE_SPEECH exige azure_speech_key/azure_speech_region. Ver
     # app/integrations/transcription/.
     transcription_provider: TranscriptionProvider = TranscriptionProvider.LOCAL
-    transcription_output_bucket: str | None = None
 
     # --- Azure Cognitive Services (segredo real nunca tem default -
     # dev local usa recursos criados via Azure CLI, ver
-    # infra/environments/dev/README.md; homologacao/producao usariam Key
-    # Vault). Cada recurso tem key+endpoint/regiao
-    # proprios porque sao servicos Cognitive Services independentes -
-    # nao ha uma unica credencial "Azure" compartilhada como o boto3 usa
-    # para varios servicos AWS. ---
+    # infra/environments/dev/README.md). Cada recurso tem key+endpoint/
+    # regiao proprios porque sao servicos Cognitive Services
+    # independentes. ---
     azure_speech_key: str | None = None
     azure_speech_region: str | None = None
     azure_vision_key: str | None = None
@@ -130,29 +113,11 @@ class Settings(BaseSettings):
     # `vision_pose_enabled`.
 
     # --- Identidade ---
-    # LOCAL (cabecalho X-Dev-Subject, sem MFA) por padrao em dev/testes;
-    # COGNITO exige cognito_user_pool_id/cognito_client_id/cognito_issuer_url
-    # e valida um token Bearer real (assinatura JWKS + emissor + audiencia +
-    # expiracao). `homologation`/`production` DEVEM usar COGNITO - ver
-    # `Settings.require_real_identity_provider` abaixo.
-    identity_provider: AuthProvider = AuthProvider.LOCAL
-    cognito_user_pool_id: str | None = None
-    cognito_client_id: str | None = None
-    cognito_issuer_url: str | None = None
-    cognito_jwks_cache_ttl_seconds: int = 3600
-
-    # --- Controle de sessao/tentativas ---
-    # Numero de falhas de autenticacao consecutivas (por `external_subject`
-    # resolvido do token, dentro de `login_lockout_window_seconds`) antes de
-    # bloquear novas tentativas - aplicavel apenas ao adaptador COGNITO,
-    # onde ha um conceito real de tentativa de login com credencial.
-    login_max_failed_attempts: int = 5
-    login_lockout_window_seconds: int = 900
-    login_lockout_duration_seconds: int = 900
-    # TTL de uma sessao autenticada (id do token) antes de exigir novo
-    # login, independente da validade do token em si - permite revogacao
-    # centralizada (app.identity.session_service.revoke_session) mesmo
-    # quando o token JWT ainda nao expirou.
+    # Adaptador local unico: resolve o usuario a partir do cabecalho de
+    # desenvolvimento `X-Dev-Subject` (ver `app.core.security`). Nao ha
+    # provedor de identidade gerenciado em nuvem neste projeto.
+    # Duracao de uma concessao break glass, usada como teto em
+    # `app.api.routes.patients` (ver `min(data.duration_seconds, ...)`).
     session_max_age_seconds: int = 3600 * 8
 
     # --- Rate limiting ---
@@ -170,13 +135,6 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.environment is Environment.PRODUCTION
-
-    @property
-    def requires_real_identity_provider(self) -> bool:
-        """`homologation`/`production` nunca podem rodar no adaptador local
-        de desenvolvimento (sem MFA, sem revogacao real) - ver
-        `app.core.security` e `scripts/validate_production_config.py`."""
-        return self.environment in (Environment.HOMOLOGATION, Environment.PRODUCTION)
 
 
 @lru_cache

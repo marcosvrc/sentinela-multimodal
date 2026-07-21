@@ -1,7 +1,15 @@
 # ADR 0006: ECS Fargate para API/workers; visao computacional em CPU no MVP
 
-**Status:** Aceito
+**Status:** Parcialmente superado (ver nota abaixo)
 **Data:** 2026-07-11
+
+> **Atualizacao (2026-07-21):** o projeto passou a usar exclusivamente
+> Azure como nuvem gerenciada, removendo toda a infraestrutura AWS
+> (incluindo ECS Fargate). O MVP roda em Docker Compose local; a decisao
+> de manter a visao computacional (OpenPose/YOLO) em CPU sobre amostras
+> pequenas, sem GPU no MVP, permanece valida e inalterada. Uma eventual
+> plataforma de containers gerenciada (ex.: Azure Container Apps) e
+> avaliacao futura, fora do escopo obrigatorio.
 
 ## Contexto
 

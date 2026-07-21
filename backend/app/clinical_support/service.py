@@ -339,8 +339,8 @@ def generate_analysis_clinical_support_summary(
     )
 
     # Guardrail de relevancia clinica (app.vision.clinical_relevance):
-    # achados de reconhecimento de imagem/video (Amazon Rekognition) que
-    # foram avaliados como NAO relevantes clinicamente, ou cuja relevancia
+    # achados de reconhecimento de imagem (Azure AI Vision) que foram
+    # avaliados como NAO relevantes clinicamente, ou cuja relevancia
     # nao pode ser confirmada, sao EXCLUIDOS das consideracoes finais -
     # nunca influenciam o resumo de apoio a analise clinica. O aviso ainda
     # fica visivel ao profissional no laudo (`summary` do proprio achado,

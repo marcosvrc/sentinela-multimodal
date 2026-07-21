@@ -163,8 +163,8 @@ class LlmAnalysisClinicalSupportRequest:
 
 
 class LlmAdapter(Protocol):
-    """Implementado por `LocalTemplateLlmAdapter` (dev/testes),
-    `OpenAiLlmAdapter` e `BedrockLlmAdapter` (reais)."""
+    """Implementado por `LocalTemplateLlmAdapter` (dev/testes) e
+    `OpenAiLlmAdapter` (real)."""
 
     def summarize(self, request: LlmSummaryRequest) -> LlmSummaryResult: ...
 

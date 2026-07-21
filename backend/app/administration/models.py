@@ -12,9 +12,9 @@ CPF, matricula, email, especialidade) e e distinto de `User`
 (`app.identity.models`, o espelho de identidade/autenticacao). Um
 funcionario pode ou nao ter uma conta de acesso vinculada (`user_id`
 opcional) - cadastrar o funcionario administrativamente e provisionar o
-acesso dele ao sistema sao passos diferentes (a integracao Cognito real,
-que criaria o `User`, ainda nao existe e continua sendo uma lacuna
-conhecida do sistema).
+acesso dele ao sistema sao passos diferentes (provisionamento real de
+credencial/senha/MFA continua fora do escopo deste MVP, que usa apenas
+o adaptador de identidade local para dev/testes).
 """
 
 from __future__ import annotations

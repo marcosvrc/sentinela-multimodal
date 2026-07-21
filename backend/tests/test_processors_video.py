@@ -5,7 +5,7 @@ BMFF) minimo real pelo fluxo completo de upload/aprovacao e chama
 `process_video_modality` sobre o `MediaAsset` resultante. Com
 `VISION_PROVIDER` no padrao (LOCAL, sem override neste ambiente), a
 analise de visao computacional retorna honestamente UNAVAILABLE (sem
-motor de pose/deteccao) - o teste verifica que os achados de qualidade e
+motor de pose/deteccao) - o teste verifica que o achado de qualidade e o
 de visao (status UNAVAILABLE) sao gravados corretamente, sem fabricar
 pose/deteccao.
 
@@ -180,29 +180,18 @@ class TestVideoProcessorWithRealUpload:
             by_nature.setdefault(f.nature, []).append(f)
 
         # 1 achado de qualidade estrutural (ORIGINAL_DATA, duracao real de
-        # 6s lida do mvhd) + 2 achados MODEL_OBSERVATION: visao
+        # 6s lida do mvhd) + 1 achado MODEL_OBSERVATION: visao
         # computacional self-hosted (UNAVAILABLE com o adaptador LOCAL
-        # padrao) e reconhecimento de video via Amazon Rekognition
-        # (tambem UNAVAILABLE, pois a feature flag
-        # `vision_rekognition_video_enabled` esta desligada por padrao) -
-        # sem hipotese de ausencia de pessoa, pois o adaptador LOCAL nao
-        # produz pose_findings (nenhum quadro real analisado).
+        # padrao) - sem hipotese de ausencia de pessoa, pois o adaptador
+        # LOCAL nao produz pose_findings (nenhum quadro real analisado).
         assert len(by_nature.get("ORIGINAL_DATA", [])) == 1
         quality_finding = by_nature["ORIGINAL_DATA"][0]
         assert quality_finding.quality_metrics["duration_seconds"] == 6.0
 
         model_observations = by_nature.get("MODEL_OBSERVATION", [])
-        assert len(model_observations) == 2
-        vision_finding = next(
-            f for f in model_observations if "frames_analyzed" in f.quality_metrics
-        )
+        assert len(model_observations) == 1
+        vision_finding = model_observations[0]
         assert vision_finding.quality_metrics["status"] == "UNAVAILABLE"
         assert vision_finding.quality_metrics["provider"] == "local"
-
-        recognition_finding = next(
-            f for f in model_observations if "frames_analyzed" not in f.quality_metrics
-        )
-        assert recognition_finding.quality_metrics["status"] == "UNAVAILABLE"
-        assert recognition_finding.quality_metrics["provider"] == "local"
 
         assert by_nature.get("ASSISTED_HYPOTHESIS", []) == []

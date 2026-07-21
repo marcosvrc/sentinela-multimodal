@@ -1,7 +1,16 @@
 # ADR 0016: Avaliacao de componentes AWS gerenciados para audio, video e imagem
 
-**Status:** Aceito
+**Status:** Superado (ver nota abaixo)
 **Data:** 2026-07-11
+
+> **Atualizacao (2026-07-21):** o projeto passou a usar exclusivamente
+> Azure como nuvem gerenciada, removendo toda a infraestrutura e
+> adaptadores AWS (Rekognition Image/Video, Transcribe, Comprehend). Os
+> adaptadores reais hoje sao Azure AI Speech (audio), Azure AI Language
+> (sentimento/termos) e Azure AI Vision (imagem, enriquecimento opcional).
+> A conclusao sobre video (worker self-hosted OpenPose/YOLOv8, pois
+> nenhum servico gerenciado de visao oferece estimativa de pose) permanece
+> valida e inalterada. Registro historico da avaliacao original.
 
 ## Contexto
 

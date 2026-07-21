@@ -1,7 +1,15 @@
 # ADR 0004: Amazon SQS com estrategia de retry e DLQ
 
-**Status:** Aceito
+**Status:** Superado (ver nota abaixo)
 **Data:** 2026-07-11
+
+> **Atualizacao (2026-07-21):** o projeto passou a usar exclusivamente
+> Azure como nuvem gerenciada, removendo toda a infraestrutura e
+> adaptadores AWS. A fila do MVP e uma tabela PostgreSQL
+> (`app.queue.local.LocalDbQueueAdapter`, unico adaptador real hoje), sem
+> Amazon SQS/DLQ. A estrategia de retry por status (`PENDING`/`IN_FLIGHT`)
+> permanece equivalente em espirito a este ADR. Registro historico da
+> decisao original.
 
 ## Contexto
 

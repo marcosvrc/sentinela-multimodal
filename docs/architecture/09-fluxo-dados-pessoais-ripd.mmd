@@ -2,17 +2,17 @@
 flowchart TD
     coleta["Coleta<br/>(cadastro, upload de midia,<br/>observacao clinica)"] --> minimiza["Minimizacao<br/>(campos necessarios por finalidade)"]
     minimiza --> pseudo["Pseudonimizacao<br/>(quando aplicavel)"]
-    pseudo --> armazenamento["Armazenamento<br/>PostgreSQL (estruturado) / S3 (midias)"]
+    pseudo --> armazenamento["Armazenamento<br/>PostgreSQL (estruturado) / armazenamento de midia"]
 
     armazenamento --> processamento["Processamento interno<br/>(regras, orquestrador, workers)"]
     processamento --> fornecedores["Fornecedores externos<br/>(allowlist minimizada)"]
-    fornecedores --> transcribe["Amazon Transcribe<br/>(regiao AWS contratada)"]
+    fornecedores --> azure["Azure AI Speech/Language/Vision<br/>(regiao contratada)"]
     fornecedores --> openai["OpenAI<br/>(projeto exclusivo, retencao controlada)"]
 
     processamento --> resultado["Resultado estruturado<br/>+ relatorio"]
     resultado --> revisao["Revisao profissional"]
     revisao --> retencao["Retencao conforme<br/>tabela por categoria"]
-    retencao --> exclusao["Exclusao efetiva<br/>(banco, S3, cache, backups)"]
+    retencao --> exclusao["Exclusao efetiva<br/>(banco, armazenamento de midia, cache, backups)"]
 
     armazenamento -.->|acesso| auditoria["Auditoria de todo acesso"]
     fornecedores -.->|acesso| auditoria

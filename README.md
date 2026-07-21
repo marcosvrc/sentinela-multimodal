@@ -11,24 +11,21 @@ O sistema esta funcional de ponta a ponta em ambiente de desenvolvimento:
 cadastro de pacientes e unidades assistenciais, upload multimodal (audio,
 video, imagem, texto), motor de regras clinicas versionado, orquestrador
 que processa cada analise por modalidade, consolidacao de risco (com LLM
-opcional), geracao de laudo em PDF, auditoria imutavel e controle de acesso
-(identidade local para dev, Cognito para homologacao/producao). Os
-adaptadores de nuvem (OpenAI, AWS Transcribe/Rekognition, Azure Cognitive
-Services, S3/SQS) sao plugaveis e comecam desligados — a aplicacao roda
-100% local sem nenhuma credencial externa (ver `LOCAL` providers em
-[`docs/MANUAL_EXECUCAO.md`](docs/MANUAL_EXECUCAO.md)).
-
-A infraestrutura de nuvem (Terraform) e a base para os ambientes `dev`,
-`homologation` e `production` ja existe em [`infra/`](infra/README.md);
-o deploy real depende de valores especificos de cada conta AWS (ver
-`terraform.tfvars.example` em cada ambiente).
+opcional), geracao de laudo em PDF, auditoria imutavel e controle de
+acesso (identidade local para dev/testes). A unica nuvem gerenciada
+utilizada e o **Azure Cognitive Services** (Speech to Text, Text
+Analytics/Language, Vision) — os adaptadores reais (Azure + OpenAI para o
+LLM de consolidacao) sao plugaveis e comecam desligados por padrao: a
+aplicacao roda 100% local sem nenhuma credencial externa (ver `LOCAL`
+providers em [`docs/MANUAL_EXECUCAO.md`](docs/MANUAL_EXECUCAO.md)). O
+worker de video (OpenPose + YOLOv8) e self-hosted, nao um servico de
+nuvem gerenciado.
 
 ## Estrutura do repositorio
 
 ```text
 backend/     API FastAPI + workers (Python, uv, SQLAlchemy, Alembic)
 frontend/    SPA React + TypeScript + Vite
-infra/       Terraform (modules/ e environments/)
 docs/        Escopo, especificacoes, ADRs e diagramas de arquitetura
 compose.yaml Orquestracao local (Postgres, backend, frontend)
 Makefile     Interface unica de comandos (tambem usada pelo CI/CD)
@@ -85,10 +82,6 @@ Acesse `http://localhost:5173` — a pagina inicial confirma a conexao com
 | `make codegen` | Gera `frontend/src/types/enums.generated.ts` a partir dos enums Python |
 | `make export-openapi` | Gera o snapshot `docs/contracts/openapi.json` |
 | `make compose-up` / `make compose-down` | Sobe/derruba os servicos do Compose |
-| `make tf-fmt` | Formata os arquivos Terraform de todos os modulos/ambientes |
-| `make tf-validate env=<ambiente>` | Valida a sintaxe/schema Terraform de um ambiente |
-| `make tf-plan env=<ambiente>` | Gera o plano Terraform de um ambiente |
-| `make tf-apply env=<ambiente>` | Aplica as mudancas Terraform de um ambiente |
 
 ## Resolucao de problemas comuns
 
@@ -123,7 +116,6 @@ remover o volume e recriar do zero com `make compose-up`.
 Nenhum dado real de paciente deve ser usado neste repositorio. Somente
 dados sinteticos sao permitidos fora de producao (ver ESCOPO_PROJETO.md
 secao 8.2 e o gate de uso com dados reais, secao 12.2). Nao commite `.env`,
-`terraform.tfvars`, chaves de API ou credenciais AWS/Azure — o `.gitignore`
-da raiz ja bloqueia esses arquivos (e o estado/lock do Terraform, o
-`.venv`, `node_modules` e a midia local gerada em `backend/.local-media`),
-mas a revisão de PR também verifica isso.
+chaves de API ou credenciais Azure/OpenAI — o `.gitignore` da raiz ja
+bloqueia esses arquivos (o `.venv`, `node_modules` e a midia local gerada
+em `backend/.local-media`), mas a revisão de PR também verifica isso.

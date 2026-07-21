@@ -23,7 +23,6 @@ import type {
   MedicalSpecialtyCreateInput,
   MedicalSpecialtyUpdateInput,
   PublishRuleSetInput,
-  RevokeSessionsInput,
   RollbackRuleSetInput,
 } from "@/types/administration";
 import type { FeatureFlags, FeatureFlagsUpdateInput } from "@/types/featureFlags";
@@ -217,18 +216,6 @@ export function updateUser(
   data: AdminUserUpdateInput,
 ): Promise<AdminUser> {
   return apiFetch<AdminUser>(`/admin/users/${userId}`, { devSubject, method: "PATCH", body: data });
-}
-
-export function revokeUserSessions(
-  devSubject: string,
-  userId: string,
-  data: RevokeSessionsInput,
-): Promise<void> {
-  return apiFetch<void>(`/admin/users/${userId}/revoke-sessions`, {
-    devSubject,
-    method: "POST",
-    body: data,
-  });
 }
 
 // --- Unidades assistenciais --------------------------------------------------

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, RotateCcw, ShieldOff, Trash2 } from "lucide-react";
+import { Pencil, RotateCcw, Trash2 } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/data-display/DataTable";
 import { Pagination } from "@/components/data-display/Pagination";
 import { EmptyState } from "@/components/feedback/EmptyState";
@@ -17,7 +17,7 @@ import { TextField } from "@/components/ui/TextField";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useDevSession } from "@/hooks/useDevSession";
 import { extractErrorMessage } from "@/lib/errorMessage";
-import { listUsers, revokeUserSessions, updateUser } from "@/services/api/administration";
+import { listUsers, updateUser } from "@/services/api/administration";
 import { UserRole } from "@/types/enums.generated";
 import { roleLabel } from "@/app/enumLabels";
 import type { AdminUser } from "@/types/administration";
@@ -62,8 +62,6 @@ export function UsersPage() {
   const [editingRole, setEditingRole] = useState<string>(UserRole.MEDICO);
 
   const [deactivateTarget, setDeactivateTarget] = useState<AdminUser | null>(null);
-  const [revokeTarget, setRevokeTarget] = useState<AdminUser | null>(null);
-  const [revokeReason, setRevokeReason] = useState("");
 
   const usersQuery = useQuery({
     queryKey: ["admin", "users", subject, page, searchFilter, roleFilter, statusFilter],
@@ -102,19 +100,6 @@ export function UsersPage() {
     },
   });
 
-  const revokeMutation = useMutation({
-    mutationFn: (userId: string) =>
-      revokeUserSessions(subject as string, userId, { reason: revokeReason }),
-    onSuccess: () => {
-      setRevokeTarget(null);
-      setRevokeReason("");
-      showSuccess("Sessões revogadas com sucesso.");
-    },
-    onError: (error: unknown) => {
-      showError(extractErrorMessage(error, "Não foi possível revogar as sessões."));
-    },
-  });
-
   function openEditRole(user: AdminUser) {
     setEditingUser(user);
     setEditingRole(user.role);
@@ -145,10 +130,6 @@ export function UsersPage() {
             )}
             {u.active ? "Excluir" : "Reativar"}
           </Button>
-          <Button type="button" variant="secondary" onClick={() => setRevokeTarget(u)}>
-            <ShieldOff size={14} strokeWidth={2} aria-hidden="true" />
-            Revogar sessoes
-          </Button>
         </div>
       ),
     },
@@ -158,7 +139,7 @@ export function UsersPage() {
     <section>
       <PageHeader
         title="Usuarios e papeis de acesso"
-        description="Contas de acesso sao criadas junto com o cadastro de funcionário (Administração → Funcionário). Desativar aqui nunca apaga o registro; apenas impede novas autenticações e revoga sessões ativas."
+        description="Contas de acesso sao criadas junto com o cadastro de funcionário (Administração → Funcionário). Desativar aqui nunca apaga o registro; apenas impede novas autenticações."
       />
 
       {!subject && <p role="alert">Configure o usuario de desenvolvimento para continuar.</p>}
@@ -238,7 +219,7 @@ export function UsersPage() {
       <ConfirmDialog
         open={Boolean(editingUser)}
         title="Editar papel do usuario"
-        description={`Trocar o papel de "${editingUser?.external_subject}" revoga automaticamente todas as sessoes ativas dele.`}
+        description={`Confirme a troca de papel para "${editingUser?.external_subject}".`}
         confirmLabel="Salvar"
         pending={roleMutation.isPending}
         onConfirm={() => editingUser && roleMutation.mutate(editingUser)}
@@ -258,7 +239,7 @@ export function UsersPage() {
         title={deactivateTarget?.active ? "Excluir usuario" : "Reativar usuario"}
         description={
           deactivateTarget?.active
-            ? `O usuario "${deactivateTarget?.external_subject}" sera desativado e tera as sessoes ativas revogadas. O registro nao e apagado (auditoria e analises passadas continuam integras) e pode ser reativado depois.`
+            ? `O usuario "${deactivateTarget?.external_subject}" sera desativado e nao podera mais autenticar. O registro nao e apagado (auditoria e analises passadas continuam integras) e pode ser reativado depois.`
             : `O usuario "${deactivateTarget?.external_subject}" voltara a poder autenticar normalmente.`
         }
         confirmLabel={deactivateTarget?.active ? "Excluir" : "Reativar"}
@@ -267,29 +248,6 @@ export function UsersPage() {
         onConfirm={() => deactivateTarget && toggleActiveMutation.mutate(deactivateTarget)}
         onCancel={() => setDeactivateTarget(null)}
       />
-
-      <ConfirmDialog
-        open={Boolean(revokeTarget)}
-        title="Revogar sessoes ativas"
-        description={`O usuario "${revokeTarget?.external_subject}" precisara autenticar novamente em todos os dispositivos.`}
-        confirmLabel="Revogar"
-        variant="danger"
-        pending={revokeMutation.isPending}
-        confirmDisabled={revokeReason.trim().length === 0}
-        onConfirm={() => revokeTarget && revokeMutation.mutate(revokeTarget.id)}
-        onCancel={() => {
-          setRevokeTarget(null);
-          setRevokeReason("");
-        }}
-      >
-        <TextField
-          id="revoke-reason"
-          label="Motivo"
-          required
-          value={revokeReason}
-          onChange={(event) => setRevokeReason(event.target.value)}
-        />
-      </ConfirmDialog>
     </section>
   );
 }

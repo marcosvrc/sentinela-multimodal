@@ -50,12 +50,12 @@ def is_clinically_relevant(nature: str, quality_metrics: dict | None) -> bool:
     - `MODEL_OBSERVATION` de audio (analise acustica DSP, ex.:
       "Energia media..."): sempre relevante - e o proprio proposito da
       deteccao de alteracao vocal, nao um enriquecimento generico.
-    - `MODEL_OBSERVATION` de IMAGE/VIDEO com rotulos do Rekognition
+    - `MODEL_OBSERVATION` de IMAGE com rotulos do Azure AI Vision
       (`quality_metrics["clinical_relevance"]` presente, ver
       `app.vision.clinical_relevance`): relevante SOMENTE quando
       `clinical_relevance == "RELEVANT"`. A categorizacao heuristica de
       imagem (PHOTOGRAPH/SCANNED_DOCUMENT/RADIOLOGICAL) e a deteccao de
-      sentimento (Comprehend) NAO contam sozinhas - a primeira classifica
+      sentimento (Azure AI Language) NAO contam sozinhas - a primeira classifica
       qualquer foto (mesmo uma paisagem) em uma categoria, e a segunda e
       so contextual, nunca prova de conteudo clinico.
     - `ASSISTED_HYPOTHESIS` (hipotese de alteracao vocal, hipotese de
@@ -71,14 +71,14 @@ def is_clinically_relevant(nature: str, quality_metrics: dict | None) -> bool:
 
     metrics = quality_metrics or {}
 
-    # Achado de reconhecimento de imagem/video (Rekognition) - traz sempre
-    # a chave "clinical_relevance" (ver app.processors.image/video); so
+    # Achado de reconhecimento de imagem (Azure AI Vision) - traz sempre
+    # a chave "clinical_relevance" (ver app.processors.image); so
     # conta quando explicitamente confirmado como relevante.
     if "clinical_relevance" in metrics:
         return metrics.get("clinical_relevance") == "RELEVANT"
 
-    # Achado de sentimento (Comprehend) - sempre contextual, nunca prova
-    # de conteudo clinico por si so.
+    # Achado de sentimento (Azure AI Language) - sempre contextual, nunca
+    # prova de conteudo clinico por si so.
     if "sentiment" in metrics:
         return False
 
@@ -97,6 +97,6 @@ def is_clinically_relevant(nature: str, quality_metrics: dict | None) -> bool:
     # Qualquer outro MODEL_OBSERVATION nao mapeado explicitamente acima
     # (ex.: status de transcricao/reconhecimento indisponivel/falho,
     # rascunho de transcricao literal sem termo extraido, deteccao YOLOv8
-    # pura sem confirmacao do Rekognition) - conservador: nao conta como
-    # prova de relevancia clinica por si so.
+    # pura sem confirmacao do Azure AI Vision) - conservador: nao conta
+    # como prova de relevancia clinica por si so.
     return False

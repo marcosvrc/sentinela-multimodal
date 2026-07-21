@@ -3,10 +3,9 @@ Analytics - `SentimentAnalysis` + `KeyPhraseExtraction`).
 
 Uso de `httpx` encapsulado neste adaptador - o dominio
 (`app.processors.text`, `app.processors.audio`) so ve
-`SentimentAnalysisAdapter` (Protocol), mesmo principio do
-`AwsComprehendSentimentAdapter` (boto3 encapsulado la).
+`SentimentAnalysisAdapter` (Protocol), nunca o cliente HTTP diretamente.
 
-Igual ao Comprehend, esta API e SINCRONA e recebe o texto diretamente
+Esta API e SINCRONA e recebe o texto diretamente
 (sem upload nem referencia a storage) - por isso o adaptador nao depende
 de storage, mesma caracteristica do adaptador AWS equivalente.
 
@@ -20,10 +19,9 @@ certeza) - os termos-chave do Azure sao frases genericas de destaque, sem
 a mesma analise linguistica estruturada, e por isso ficam gravados como
 outro campo do mesmo achado, nunca substituindo o motor proprio.
 
-Limite de tamanho da API (documento unico): 5.120 caracteres - diferente
-do limite de 5.000 BYTES UTF-8 do Comprehend (unidade diferente:
-caracteres vs bytes). Textos maiores sao truncados aqui (nunca
-paginados), mesmo principio de honestidade do adaptador AWS.
+Limite de tamanho da API (documento unico): 5.120 caracteres. Textos
+maiores sao truncados aqui (nunca paginados), mesmo principio de
+honestidade dos demais adaptadores reais do projeto.
 
 **Nao exercitado contra a API real do Azure neste ambiente** (sem
 credenciais/rede nos testes automatizados) - testado com um cliente HTTP
@@ -121,10 +119,8 @@ class AzureLanguageSentimentAdapter:
                 positive=float(confidence["positive"]),
                 negative=float(confidence["negative"]),
                 neutral=float(confidence["neutral"]),
-                # Azure nao tem categoria "mixed" separada (diferente do
-                # Comprehend) - documentado como 0.0 explicito em vez de
-                # inventar um valor, mantendo o mesmo formato de resultado
-                # do dominio para os dois provedores.
+                # Azure nao tem categoria "mixed" separada - documentado
+                # como 0.0 explicito em vez de inventar um valor.
                 mixed=0.0,
             )
         except (KeyError, TypeError, ValueError, IndexError) as exc:

@@ -133,9 +133,8 @@ export interface RollbackRuleSetInput {
 
 /**
  * Usuarios/papeis de acesso. Espelho local de instituicao/papel - o
- * provisionamento de credencial (senha/MFA) em si acontece no Cognito,
- * fora deste modulo (ver backend/app/administration/service.py, docstring
- * da secao "Usuarios").
+ * provisionamento de credencial em si fica fora deste modulo (adaptador
+ * de identidade local, ver backend/app/core/security.py).
  */
 export interface AdminUser {
   id: string;
@@ -149,10 +148,6 @@ export interface AdminUser {
 export interface AdminUserUpdateInput {
   role?: string;
   active?: boolean;
-}
-
-export interface RevokeSessionsInput {
-  reason: string;
 }
 
 /** Unidade assistencial (eixo "unidade + vinculo" do controle de acesso). */

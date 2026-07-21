@@ -15,7 +15,7 @@ Para WAV PCM tambem roda:
    nunca diagnostico).
 2. **Transcricao** (`app.integrations.transcription`): adaptador LOCAL
    retorna honestamente "indisponivel" (sem motor de ASR); adaptador
-   AWS_TRANSCRIBE (configuravel) produz uma transcricao real. Quando ha
+   AZURE_SPEECH (configuravel) produz uma transcricao real. Quando ha
    transcricao, os mesmos termos clinicos candidatos usados pelo
    processador de texto (`app.clinical_nlp.text_analysis`) sao extraidos
    dela, e um rascunho de nota clinica e composto para revisao - nunca
@@ -57,7 +57,6 @@ from app.storage import get_storage_adapter
 _WAV_MIME_TYPES = ("audio/wav", "audio/x-wav")
 
 _SENTIMENT_PROVIDER_DISPLAY_NAMES = {
-    "aws_comprehend": "Amazon Comprehend",
     "azure_language": "Azure AI Language",
     "local": "adaptador local",
 }
@@ -174,9 +173,8 @@ def _run_transcription(
         language_code="pt-BR",
         media_format=media_format,
         job_name=f"analysis-{modality_state.analysis_id}-audio-{uuid.uuid4().hex[:8]}",
-        # So usado pelo adaptador Azure (Fast Transcription API, upload
-        # direto) - o adaptador AWS ignora este campo e referencia o
-        # objeto no S3 via `storage_key`. Bytes ja lidos abaixo para a
+        # Usado pelo adaptador Azure (Fast Transcription API, upload
+        # direto no corpo da requisicao). Bytes ja lidos abaixo para a
         # analise acustica, reaproveitados aqui sem leitura extra do
         # storage.
         audio_bytes=content,

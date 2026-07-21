@@ -2,17 +2,12 @@
 e do CRUD de usuarios/papeis de acesso (secao 5.3, fechado por
 `app.administration.service.create_user`/etc).
 
-Cobre o que `docs/governance/VALIDACAO_ESCOPO.md` disclosed como faltante
-antes desta rodada de reconciliacao: `require_patient_access` (vinculo
-assistencial + break glass), CRUD de `PatientCareAssignment`/`CareUnit`, e
-CRUD de `User` (criacao, listagem, atualizacao de papel/ativacao, revogacao
-de sessoes).
+Cobre `require_patient_access` (vinculo assistencial + break glass), CRUD
+de `PatientCareAssignment`/`CareUnit`, e CRUD de `User` (criacao,
+listagem, atualizacao de papel/ativacao).
 
-Nao cobre o adaptador COGNITO em si (exigiria um JWKS real - ver
-`app/integrations/identity/cognito.py` e seus proprios testes unitarios com
-chave RSA gerada em memoria); aqui o foco e a autorizacao que roda **depois**
-de qualquer identidade ja resolvida (LOCAL nestes testes, como em todo o
-resto da suite HTTP).
+Identidade e sempre resolvida pelo adaptador LOCAL (`X-Dev-Subject`); aqui
+o foco e a autorizacao que roda **depois** da identidade ja resolvida.
 
 Precisa de Postgres real; pulado automaticamente quando indisponivel neste
 sandbox (roda no CI).
@@ -244,8 +239,8 @@ class TestUserCrud:
     """Nao ha mais `POST /admin/users`: a conta de acesso e criada junto
     com o funcionario (`POST /admin/employees`, ver
     test_administration_api.py::test_created_employee_can_authenticate_with_its_own_role).
-    Esta classe cobre apenas consulta (com filtros) e gestao (papel/status/
-    revogacao de sessao) de contas ja existentes."""
+    Esta classe cobre apenas consulta (com filtros) e gestao (papel/status)
+    de contas ja existentes."""
 
     def test_admin_lists_and_updates_user(self, client: TestClient) -> None:
         institution_id = _create_institution()
@@ -306,38 +301,3 @@ class TestUserCrud:
 
         response = client.get("/admin/users", headers={"X-Dev-Subject": medico_subject})
         assert response.status_code == 403
-
-    def test_revoke_sessions_endpoint_returns_204(self, client: TestClient) -> None:
-        institution_id = _create_institution()
-        admin_subject, _ = _create_user(institution_id, UserRole.ADMINISTRADOR_TECNICO)
-        _, target_user_id = _create_user(institution_id, UserRole.MEDICO)
-
-        response = client.post(
-            f"/admin/users/{target_user_id}/revoke-sessions",
-            headers={"X-Dev-Subject": admin_subject},
-            json={"reason": "Suspeita de compartilhamento de credencial."},
-        )
-        assert response.status_code == 204
-
-
-class TestLoginLockout:
-    def test_is_locked_out_after_threshold_and_resets_outside_window(self) -> None:
-        # Testa `app.identity.service.is_locked_out` diretamente (a unica
-        # forma de exercitar bloqueio sem um token Cognito real - ver
-        # docstring do modulo sobre o escopo dos testes de COGNITO).
-        session = SessionLocal()
-        try:
-            from app.core.config import get_settings
-
-            settings = get_settings()
-            subject = f"lockout-test-{uuid.uuid4()}"
-
-            assert identity_service.is_locked_out(session, subject) is False
-
-            for _ in range(settings.login_max_failed_attempts):
-                identity_service.record_failed_attempt(session, subject, reason="bad_token")
-            session.commit()
-
-            assert identity_service.is_locked_out(session, subject) is True
-        finally:
-            session.close()

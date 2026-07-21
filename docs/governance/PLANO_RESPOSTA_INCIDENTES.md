@@ -11,9 +11,9 @@
 
 | Severidade | Critério | Exemplo |
 | --- | --- | --- |
-| SEV1 — Crítico | Exposição confirmada de dados de saúde de pacientes reais, ou indisponibilidade total do sistema em produção | Bucket S3 de mídia exposto publicamente; RDS acessível pela internet |
+| SEV1 — Crítico | Exposição confirmada de dados de saúde de pacientes reais, ou indisponibilidade total do sistema em produção | Armazenamento de mídia exposto publicamente; banco de dados acessível pela internet |
 | SEV2 — Alto | Risco de exposição não confirmado, ou falha de controle de acesso detectada sem evidência de exploração | Credencial de serviço vazada em log; falha de isolamento multi-tenant descoberta em teste |
-| SEV3 — Moderado | Degradação de serviço sem exposição de dados | Fila com DLQ crescendo, workers não processando |
+| SEV3 — Moderado | Degradação de serviço sem exposição de dados | Fila de processamento crescendo sem consumo, workers não processando |
 | SEV4 — Baixo | Achado de segurança sem exploração nem exposição | Dependência com CVE conhecida, sem exploit ativo no ambiente |
 
 ## 2. Papéis (estrutura mínima — nomes reais PENDENTES)
@@ -54,31 +54,29 @@ vigente (atualmente três dias úteis, Resolução CD/ANPD nº 15/2024).
 | --- | --- |
 | Trilha de auditoria imutável e verificável | `app.audit` — detecta inserção/remoção/alteração de eventos |
 | Isolamento multi-tenant | `institution_id` derivado sempre do servidor (`app.core.security`), nunca do cliente — reduz superfície de um vazamento cross-tenant |
-| Segredos nunca em código/state | RDS com `manage_master_user_password`, OpenAI key via Secrets Manager com placeholder (`infra/modules/secrets`) |
-| Criptografia em repouso | KMS único por ambiente cobrindo S3, SQS, Secrets Manager, RDS (`infra/modules/kms`) |
-| Revogação de credencial | Rotação nativa via Secrets Manager/RDS; chave OpenAI substituível fora do Terraform |
-| Filas com DLQ | Mensagens que falham repetidamente ficam isoladas em `infra/modules/queue` (DLQ), não se perdem silenciosamente |
+| Segredos nunca em código | Chaves Azure/OpenAI ficam exclusivamente em variáveis de ambiente (`.env`, nunca commitado) |
+| Revogação de credencial | Chave/subscription key do Azure e da OpenAI substituíveis a qualquer momento, sem exigir rebuild |
+| Fila com retry | Mensagens que falham repetidamente ficam visíveis em `analysis_queue_messages` (status `IN_FLIGHT`/`PENDING`), não se perdem silenciosamente |
 
 ## 5. Playbooks mínimos (ESCOPO_PROJETO.md seção 8.6)
 
 Cada playbook abaixo segue o fluxo da seção 3. Passos específicos:
 
 ### 5.1 Ransomware
-- Isolar workloads afetados (parar tasks ECS do serviço comprometido).
-- Verificar integridade de backups do RDS antes de restaurar.
+- Isolar os processos/containers afetados (parar o serviço comprometido).
+- Verificar integridade dos backups do PostgreSQL antes de restaurar.
 - Não pagar resgate sem decisão formal do controlador.
 
-### 5.2 Bucket S3 exposto
-- Aplicar/objeto verificar `aws_s3_bucket_public_access_block` (já
-  configurado por padrão em `infra/modules/storage` — investigar como foi
-  contornado).
-- Rotacionar URLs pré-assinadas emitidas (reduzir `upload_url_ttl_seconds`
-  temporariamente se necessário).
+### 5.2 Armazenamento de mídia exposto
+- Revogar/expirar tokens de upload emitidos (reduzir
+  `media_upload_url_ttl_seconds` temporariamente se necessário).
+- Verificar permissões do diretório de armazenamento local (ou, em um
+  eventual blob storage gerenciado, as políticas de acesso público).
 - Auditar `audit_events` por downloads/uploads no período de exposição.
 
 ### 5.3 Credencial comprometida
-- Rotacionar via Secrets Manager (RDS: `manage_master_user_password` já
-  suporta rotação nativa; OpenAI: substituir o valor do secret).
+- Rotacionar a chave/subscription key do Azure (Speech/Language/Vision)
+  ou a chave da OpenAI no provedor e atualizar a variável de ambiente.
 - Revisar `audit_events` por ações do `external_subject`/role associado à
   credencial no período.
 
@@ -94,7 +92,7 @@ Cada playbook abaixo segue o fluxo da seção 3. Passos específicos:
 - Avaliar se o destinatário incorreto está em outra instituição (violação
   de isolamento) ou é erro operacional dentro da mesma instituição.
 
-### 5.6 Vazamento em fornecedor (OpenAI ou AWS)
+### 5.6 Vazamento em fornecedor (OpenAI ou Azure)
 - Consultar `RiskConsolidation.llm_input_hash`/`llm_output_hash` para
   identificar quais análises tiveram chamada ao LLM no período afetado
   (os hashes não revelam o conteúdo, mas permitem correlação com logs do
@@ -103,21 +101,21 @@ Cada playbook abaixo segue o fluxo da seção 3. Passos específicos:
   ainda PENDENTE de formalização com cláusulas de incidente**, seção 8.5).
 
 ### 5.7 Mídia publicada indevidamente
-- Revogar acesso público (bucket já bloqueia por padrão — investigar
-  causa).
+- Revogar/expirar o token de upload/acesso envolvido e investigar a
+  causa da exposição.
 - Verificar `MediaAsset` associado e todas as `Analysis`/`Patient`
   relacionadas para dimensionar o impacto.
 
 ### 5.8 Corrupção/exclusão de dados
-- Restaurar do backup do RDS (retenção configurada em
-  `infra/modules/database`: `backup_retention_days`).
+- Restaurar do backup do PostgreSQL (retenção a ser definida conforme a
+  política de backup do ambiente de implantação).
 - Validar integridade da cadeia de auditoria pós-restauração
   (`verify_chain`).
 
 ### 5.9 Indisponibilidade
-- Verificar saúde do ALB/ECS (`infra/modules/ecs`), filas (SQS/DLQ) e RDS.
-- Escalar `api_desired_count`/`workers[*].desired_count` conforme
-  necessário.
+- Verificar saúde da API, dos workers e do PostgreSQL (`docker compose ps`
+  em ambiente local).
+- Reiniciar/escalar os processos afetados conforme necessário.
 
 ### 5.10 Adulteração de modelo/regra
 - Toda `ClinicalRuleSet` é versionada e nunca sobrescrita

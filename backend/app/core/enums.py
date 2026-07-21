@@ -283,55 +283,24 @@ class MediaUploadState(str, Enum):
     EXPIRED = "EXPIRED"
 
 
-class StorageBackend(str, Enum):
-    """Adaptador de armazenamento de midia.
-
-    `LOCAL` e o adaptador de filesystem para desenvolvimento/testes; `S3` e
-    o Amazon S3 usado em homologacao/producao. Selecionado por configuracao
-    (`Settings.media_storage_backend`), nunca por logica espalhada pelo
-    codigo.
-    """
-
-    LOCAL = "LOCAL"
-    S3 = "S3"
-
-
 class LlmProvider(str, Enum):
     """Adaptador de LLM usado pelo consolidador de risco.
 
     `LOCAL` e um adaptador deterministico (template fixo, sem chamada de
     rede) para desenvolvimento/testes; `OPENAI` e o adaptador real via
     `openai` (uso do LLM restrito a organizacao, sintese e explicacao,
-    nunca como fonte de classificacao de risco); `BEDROCK` e o adaptador real via Amazon
-    Bedrock (`boto3`, Converse API com Structured Outputs - mesma garantia
-    de schema rigido do adaptador OpenAI, credenciais IAM do processo em
-    vez de chave de API externa); `GEMINI` esta registrado como opcao na
-    tela de feature flags (`app.feature_flags`) mas AINDA NAO TEM
-    adaptador real implementado - selecionar `GEMINI` falha explicitamente
-    (nunca finge funcionar). Selecionado por `FeatureFlags` (banco, mutavel
-    em runtime via tela de administracao), com `Settings.llm_provider`
-    (.env) como fallback quando a linha de flags ainda nao existir.
+    nunca como fonte de classificacao de risco); `GEMINI` esta registrado
+    como opcao na tela de feature flags (`app.feature_flags`) mas AINDA
+    NAO TEM adaptador real implementado - selecionar `GEMINI` falha
+    explicitamente (nunca finge funcionar). Selecionado por
+    `FeatureFlags` (banco, mutavel em runtime via tela de administracao),
+    com `Settings.llm_provider` (.env) como fallback quando a linha de
+    flags ainda nao existir.
     """
 
     LOCAL = "LOCAL"
     OPENAI = "OPENAI"
-    BEDROCK = "BEDROCK"
     GEMINI = "GEMINI"
-
-
-class AuthProvider(str, Enum):
-    """Adaptador de resolucao de identidade usado por `app.core.security`.
-
-    `LOCAL` mantem o cabecalho de desenvolvimento `X-Dev-Subject`
-    (dev/testes, sem MFA - nunca usado em `homologation`/`production`);
-    `COGNITO` valida um token Bearer emitido pelo Amazon Cognito (assinatura
-    JWKS, emissor, audiencia e expiracao), com MFA imposto pela politica do
-    User Pool (`mfa_configuration`, ver infra/modules/identity) antes de o
-    token existir. Selecionado por `Settings.identity_provider`.
-    """
-
-    LOCAL = "LOCAL"
-    COGNITO = "COGNITO"
 
 
 class TranscriptionProvider(str, Enum):
@@ -339,49 +308,14 @@ class TranscriptionProvider(str, Enum):
 
     `LOCAL` nao tem motor de ASR (reconhecimento de fala) real - retorna
     status `UNAVAILABLE` de forma honesta, sem inventar transcricao;
-    `AWS_TRANSCRIBE` e o adaptador real via `boto3` (Amazon Transcribe,
-    batch, `pt-BR`); `AZURE_SPEECH` e o adaptador real via REST
-    (Azure AI Speech, API de audio curto - envia os bytes lidos do
-    storage aprovado diretamente no corpo da requisicao, sem exigir S3 nem
-    SAS URI, `pt-BR`). Selecionado por `Settings.transcription_provider`.
+    `AZURE_SPEECH` e o adaptador real via REST (Azure AI Speech, API de
+    audio curto - envia os bytes lidos do storage aprovado diretamente no
+    corpo da requisicao, `pt-BR`). Selecionado por
+    `Settings.transcription_provider`.
     """
 
     LOCAL = "LOCAL"
-    AWS_TRANSCRIBE = "AWS_TRANSCRIBE"
     AZURE_SPEECH = "AZURE_SPEECH"
-
-
-class ImageRecognitionProvider(str, Enum):
-    """Adaptador de reconhecimento de imagem usado pelo enriquecimento
-    opcional do processador IMAGE.
-
-    `AWS_REKOGNITION` e o adaptador real via `boto3` (Amazon Rekognition
-    Image `DetectLabels`, referencia direta ao objeto no S3); `AZURE_VISION`
-    e o adaptador real via REST (Azure AI Vision, Image Analysis - envia os
-    bytes lidos do storage aprovado diretamente no corpo da requisicao, sem
-    exigir S3). Selecionado por `FeatureFlags.image_recognition_provider`
-    (banco, mutavel em runtime), so consultado quando
-    `image_recognition_enabled` estiver ligado.
-    """
-
-    AWS_REKOGNITION = "AWS_REKOGNITION"
-    AZURE_VISION = "AZURE_VISION"
-
-
-class SentimentAnalysisProvider(str, Enum):
-    """Adaptador de analise de sentimento usado pelo enriquecimento
-    opcional CONTEXTUAL dos processadores TEXT/AUDIO.
-
-    `AWS_COMPREHEND` e o adaptador real via `boto3` (Amazon Comprehend
-    `DetectSentiment`, suporte a `pt`); `AZURE_LANGUAGE` e o adaptador real
-    via REST (Azure AI Language, Sentiment Analysis, suporte a `pt`).
-    Selecionado por `FeatureFlags.sentiment_analysis_provider` (banco,
-    mutavel em runtime), so consultado quando `sentiment_analysis_enabled`
-    estiver ligado.
-    """
-
-    AWS_COMPREHEND = "AWS_COMPREHEND"
-    AZURE_LANGUAGE = "AZURE_LANGUAGE"
 
 
 class VisionProvider(str, Enum):
@@ -393,8 +327,8 @@ class VisionProvider(str, Enum):
     analise postural + YOLOv8 para deteccao de objetos/areas criticas,
     ambos em CPU, executando sobre amostras pequenas para manter a analise
     viavel em CPU). Selecionado por `Settings.vision_provider`. O worker
-    self-hosted foi escolhido porque servicos gerenciados de visao como o
-    Amazon Rekognition nao oferecem estimativa de pose articulada, que e
+    self-hosted foi escolhido porque servicos gerenciados de visao (ex.:
+    Azure AI Vision) nao oferecem estimativa de pose articulada, que e
     o requisito central desta modalidade.
     """
 
@@ -423,8 +357,8 @@ class TranscriptionStatus(str, Enum):
 
 
 class SentimentAnalysisStatus(str, Enum):
-    """Resultado da chamada ao adaptador de analise de sentimento (Amazon
-    Comprehend) - nunca bloqueia o registro clinico nem a avaliacao de
+    """Resultado da chamada ao adaptador de analise de sentimento (Azure
+    AI Language) - nunca bloqueia o registro clinico nem a avaliacao de
     qualidade ja calculada (mesmo principio de `TranscriptionStatus`).
     Sentimento e sempre CONTEXTUAL - quando utilizada, a analise de
     sentimento e apenas contextual e nunca determina risco clinico - o

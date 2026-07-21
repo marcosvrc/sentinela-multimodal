@@ -1,18 +1,13 @@
-"""Testes dos adaptadores de analise de sentimento (Amazon Comprehend
-`DetectSentiment`).
+"""Testes dos adaptadores de analise de sentimento (Azure AI Language
+`SentimentAnalysis`/`KeyPhraseExtraction`).
 
-O adaptador LOCAL e testado diretamente (sem rede). O adaptador AWS real
-(`AwsComprehendSentimentAdapter`) e testado com um cliente `boto3` FALSO
-injetado no construtor (mesmo padrao de `test_image_recognition_
-adapters.py`)."""
+O adaptador LOCAL e testado diretamente (sem rede). O adaptador Azure real
+(`AzureLanguageSentimentAdapter`) e testado com um cliente HTTP FALSO
+injetado no construtor (mesmo padrao de `test_transcription_adapters.py`)."""
 
 from __future__ import annotations
 
 from app.core.enums import SentimentAnalysisStatus
-from app.integrations.sentiment_analysis.aws_comprehend import (
-    _MAX_TEXT_BYTES,
-    AwsComprehendSentimentAdapter,
-)
 from app.integrations.sentiment_analysis.base import SentimentAnalysisRequest
 from app.integrations.sentiment_analysis.local import LocalUnavailableSentimentAnalysisAdapter
 
@@ -28,83 +23,6 @@ def test_local_adapter_always_returns_unavailable_never_fake_sentiment() -> None
     assert result.scores is None
     assert result.provider == "local"
     assert result.error is not None
-
-
-class _FakeComprehendClient:
-    def __init__(self, *, response: dict | None = None):
-        self.response = response or {
-            "Sentiment": "NEGATIVE",
-            "SentimentScore": {
-                "Positive": 0.02,
-                "Negative": 0.85,
-                "Neutral": 0.10,
-                "Mixed": 0.03,
-            },
-        }
-        self.calls: list[dict] = []
-
-    def detect_sentiment(self, **kwargs):
-        self.calls.append(kwargs)
-        return self.response
-
-
-def test_aws_adapter_calls_detect_sentiment_with_text_and_language() -> None:
-    client = _FakeComprehendClient()
-    adapter = AwsComprehendSentimentAdapter(comprehend_client=client)
-
-    result = adapter.detect_sentiment(_REQUEST)
-
-    assert len(client.calls) == 1
-    call = client.calls[0]
-    assert call["Text"] == _REQUEST.text
-    assert call["LanguageCode"] == "pt"
-    assert result.status is SentimentAnalysisStatus.COMPLETED
-    assert result.provider == "aws_comprehend"
-
-
-def test_aws_adapter_returns_completed_result_with_parsed_scores() -> None:
-    adapter = AwsComprehendSentimentAdapter(comprehend_client=_FakeComprehendClient())
-
-    result = adapter.detect_sentiment(_REQUEST)
-
-    assert result.sentiment == "NEGATIVE"
-    assert result.scores is not None
-    assert result.scores.negative == 0.85
-    assert result.scores.positive == 0.02
-
-
-def test_aws_adapter_truncates_text_above_byte_limit() -> None:
-    client = _FakeComprehendClient()
-    adapter = AwsComprehendSentimentAdapter(comprehend_client=client)
-
-    long_text = "a" * (_MAX_TEXT_BYTES + 500)
-    adapter.detect_sentiment(SentimentAnalysisRequest(text=long_text))
-
-    sent_text = client.calls[0]["Text"]
-    assert len(sent_text.encode("utf-8")) <= _MAX_TEXT_BYTES
-
-
-def test_aws_adapter_never_raises_when_client_errors() -> None:
-    class _RaisingClient:
-        def detect_sentiment(self, **kwargs):
-            raise RuntimeError("credenciais invalidas")
-
-    adapter = AwsComprehendSentimentAdapter(comprehend_client=_RaisingClient())
-
-    result = adapter.detect_sentiment(_REQUEST)
-
-    assert result.status is SentimentAnalysisStatus.FAILED
-    assert "credenciais invalidas" in result.error
-    assert result.sentiment is None
-
-
-def test_aws_adapter_fails_gracefully_on_empty_text() -> None:
-    adapter = AwsComprehendSentimentAdapter(comprehend_client=_FakeComprehendClient())
-
-    result = adapter.detect_sentiment(SentimentAnalysisRequest(text="   "))
-
-    assert result.status is SentimentAnalysisStatus.FAILED
-    assert result.sentiment is None
 
 
 class _FakeAzureHttpResponse:

@@ -1,5 +1,5 @@
 """Adaptador LOCAL de analise de sentimento: honesto sobre nao chamar o
-Amazon Comprehend.
+Azure AI Language.
 
 TEMPORARIO (mesmo padrao dos demais adaptadores locais). Retornar um
 sentimento fabricado seria pior do que nao analisar (viola o principio
@@ -22,8 +22,8 @@ class LocalUnavailableSentimentAnalysisAdapter:
             status=SentimentAnalysisStatus.UNAVAILABLE,
             provider="local",
             error=(
-                "Adaptador LOCAL nao inclui analise de sentimento (Amazon "
-                "Comprehend). Enriquecimento real requer a feature flag "
-                "'sentiment_analysis_enabled' ligada e credenciais AWS configuradas."
+                "Adaptador LOCAL nao inclui analise de sentimento (Azure AI "
+                "Language). Enriquecimento real requer a feature flag "
+                "'sentiment_analysis_enabled' ligada e credenciais Azure configuradas."
             ),
         )

@@ -1,10 +1,9 @@
 """Interface de armazenamento de midia.
 
-Duas implementacoes: `LocalFilesystemStorageAdapter` (dev/testes) e
-`S3StorageAdapter` (homologacao/producao). Nenhum outro modulo deve falar
-diretamente com `boto3` ou o filesystem para midia - sempre por esta
-interface, selecionada por `app.storage.get_storage_adapter()` a partir de
-`Settings.media_storage_backend`.
+Implementacao unica: `LocalFilesystemStorageAdapter` (filesystem local).
+Nenhum outro modulo deve falar diretamente com o filesystem para midia -
+sempre por esta interface, selecionada por
+`app.storage.get_storage_adapter()`.
 """
 
 from __future__ import annotations

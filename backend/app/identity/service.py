@@ -1,12 +1,10 @@
 """Resolucao de identidade (usuarios/instituicoes) e controles de acesso
-reais (bloqueio por tentativa, sessao revogavel, break glass,
-unidade/vinculo assistencial).
+reais (break glass, unidade/vinculo assistencial).
 
 Mantido separado das rotas HTTP e do adaptador de autenticacao
-(`app.core.security`) para que a origem das claims (token Cognito validado,
-ou o cabecalho local em dev/testes) seja um detalhe isolado. Nenhuma outra
-parte do sistema deve consultar `User`/`Institution` diretamente para fins
-de autenticacao.
+(`app.core.security`) para que a origem da identidade (o cabecalho local
+`X-Dev-Subject`) seja um detalhe isolado. Nenhuma outra parte do sistema
+deve consultar `User`/`Institution` diretamente para fins de autenticacao.
 """
 
 from __future__ import annotations
@@ -18,17 +16,14 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
 from app.core.enums import UserRole
 from app.core.errors import ApiError
 from app.identity.models import (
-    AuthFailedAttempt,
     BreakGlassGrant,
     CareUnit,
     Institution,
     PatientCareAssignment,
     User,
-    UserSession,
 )
 
 
@@ -106,109 +101,6 @@ def get_or_create_user(
     db.add(user)
     db.flush()
     return user
-
-
-# --- Bloqueio por tentativa --------------------------------------------------
-
-
-def record_failed_attempt(db: Session, external_subject: str, reason: str) -> None:
-    db.add(AuthFailedAttempt(external_subject=external_subject, reason=reason[:100]))
-    db.flush()
-
-
-def is_locked_out(db: Session, external_subject: str) -> bool:
-    settings = get_settings()
-    window_start = datetime.now(tz=timezone.utc) - timedelta(
-        seconds=settings.login_lockout_window_seconds
-    )
-    recent_failures = db.scalar(
-        select(func.count())
-        .select_from(AuthFailedAttempt)
-        .where(
-            AuthFailedAttempt.external_subject == external_subject,
-            AuthFailedAttempt.occurred_at >= window_start,
-        )
-    )
-    return int(recent_failures or 0) >= settings.login_max_failed_attempts
-
-
-# --- Sessoes revogaveis centralmente -----------------------------------------
-
-
-def register_session(
-    db: Session,
-    *,
-    user_id: uuid.UUID,
-    session_token_id: str,
-    issued_at: datetime,
-    expires_at: datetime,
-) -> UserSession:
-    """Registra (ou reaproveita) a sessao local associada a um token real.
-
-    `session_token_id` e o identificador estavel do token (claim `jti` do
-    Cognito). Isto permite revogar uma sessao especifica antes do JWT
-    expirar - `get_current_user` (app.core.security) consulta esta tabela a
-    cada requisicao quando o provedor real esta ativo.
-    """
-    existing = db.scalar(
-        select(UserSession).where(UserSession.session_token_id == session_token_id)
-    )
-    if existing is not None:
-        return existing
-    session_row = UserSession(
-        user_id=user_id,
-        session_token_id=session_token_id,
-        issued_at=issued_at,
-        expires_at=expires_at,
-    )
-    db.add(session_row)
-    db.flush()
-    return session_row
-
-
-def get_active_session(db: Session, session_token_id: str) -> UserSession | None:
-    session_row = db.scalar(
-        select(UserSession).where(UserSession.session_token_id == session_token_id)
-    )
-    if session_row is None:
-        return None
-    if session_row.revoked_at is not None:
-        return None
-    if session_row.expires_at <= datetime.now(tz=timezone.utc):
-        return None
-    return session_row
-
-
-def revoke_session(
-    db: Session, session_id: uuid.UUID, *, revoked_by: str, reason: str
-) -> UserSession:
-    session_row = db.scalar(select(UserSession).where(UserSession.id == session_id))
-    if session_row is None:
-        raise ApiError(code="SESSION_NOT_FOUND", message="Sessao nao encontrada.", status_code=404)
-    session_row.revoked_at = datetime.now(tz=timezone.utc)
-    session_row.revoked_by = revoked_by
-    session_row.revoke_reason = reason
-    db.flush()
-    return session_row
-
-
-def revoke_all_sessions_for_user(
-    db: Session, user_id: uuid.UUID, *, revoked_by: str, reason: str
-) -> int:
-    sessions = list(
-        db.scalars(
-            select(UserSession).where(
-                UserSession.user_id == user_id, UserSession.revoked_at.is_(None)
-            )
-        ).all()
-    )
-    now = datetime.now(tz=timezone.utc)
-    for session_row in sessions:
-        session_row.revoked_at = now
-        session_row.revoked_by = revoked_by
-        session_row.revoke_reason = reason
-    db.flush()
-    return len(sessions)
 
 
 # --- Unidade e vinculo assistencial ------------------------------------------

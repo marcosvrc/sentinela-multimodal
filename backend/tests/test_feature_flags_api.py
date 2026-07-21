@@ -61,7 +61,7 @@ def restore_feature_flags():
                 "vision_detection_enabled",
                 "vision_pose_enabled",
                 "image_recognition_enabled",
-                "vision_rekognition_video_enabled",
+                "sentiment_analysis_enabled",
             )
         }
     finally:
