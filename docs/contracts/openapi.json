@@ -75,22 +75,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -139,22 +123,6 @@
                 }
               ],
               "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -288,22 +256,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -363,22 +315,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -435,22 +371,6 @@
                 }
               ],
               "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -521,22 +441,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "requestBody": {
@@ -604,22 +508,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -684,22 +572,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -732,7 +604,7 @@
           "patients"
         ],
         "summary": "Create Break Glass Grant",
-        "description": "Concede acesso de emergencia ao paciente por um prazo curto\n(ESCOPO_PROJETO.md secao 5.2: \"break glass\"). Nunca silencioso: gera\nevento de auditoria AUTHORIZATION imediatamente e outro em cada acesso\nrealizado sob o grant (ver `app.core.security.require_patient_access`).\n\nLimite de taxa mais restrito (`Settings.rate_limit_auth`, nao o\n`rate_limit_default` global): esta e a unica acao de elevacao de acesso\nexposta diretamente por esta API (o login/MFA em si acontece no\nCognito, fora deste backend), entao e o alvo mais provavel de abuso por\nforca bruta/enumeracao de pacientes.",
+        "description": "Concede acesso de emergencia ao paciente por um prazo curto\n(\"break glass\"). Nunca silencioso: gera evento de auditoria\nAUTHORIZATION imediatamente e outro em cada acesso\nrealizado sob o grant (ver `app.core.security.require_patient_access`).\n\nLimite de taxa mais restrito (`Settings.rate_limit_auth`, nao o\n`rate_limit_default` global): esta e a unica acao de elevacao de acesso\nexposta diretamente por esta API, entao e o alvo mais provavel de\nabuso por forca bruta/enumeracao de pacientes.",
         "operationId": "create_break_glass_grant_patients__patient_id__break_glass_post",
         "parameters": [
           {
@@ -759,22 +631,6 @@
                 }
               ],
               "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -818,7 +674,7 @@
           "patients"
         ],
         "summary": "Create Care Assignment",
-        "description": "Cria o vinculo assistencial formal entre um profissional e um\npaciente (ESCOPO_PROJETO.md secao 5.2). Restrito a administracao -\no vinculo em si e uma decisao organizacional, nao clinica.",
+        "description": "Cria o vinculo assistencial formal entre um profissional e um\npaciente. Restrito a administracao - o vinculo em si e uma decisao\norganizacional, nao clinica.",
         "operationId": "create_care_assignment_patients__patient_id__care_assignments_post",
         "parameters": [
           {
@@ -845,22 +701,6 @@
                 }
               ],
               "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -940,22 +780,6 @@
                 }
               ],
               "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -1109,22 +933,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -1173,22 +981,6 @@
                 }
               ],
               "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -1379,22 +1171,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -1445,22 +1221,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -1493,7 +1253,7 @@
           "media"
         ],
         "summary": "List Analysis Professionals",
-        "description": "Opcoes do filtro \"Medico\" do historico de analises\n(ESPECIFICACAO_FRONTEND.md secao 7.9) e do campo pesquisavel de\nfuncionario no popup de observacao clinica (matricula + nome).",
+        "description": "Opcoes do filtro \"Medico\" do historico de analises e do campo\npesquisavel de funcionario no popup de observacao clinica (matricula +\nnome).",
         "operationId": "list_analysis_professionals_analyses_professionals_get",
         "parameters": [
           {
@@ -1510,22 +1270,6 @@
                 }
               ],
               "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -1590,22 +1334,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -1666,22 +1394,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -1740,22 +1452,6 @@
                 }
               ],
               "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -1823,22 +1519,6 @@
                 }
               ],
               "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -1912,22 +1592,6 @@
                 }
               ],
               "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -2032,22 +1696,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "requestBody": {
@@ -2117,22 +1765,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -2191,22 +1823,6 @@
                 }
               ],
               "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -2267,22 +1883,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -2341,22 +1941,6 @@
                 }
               ],
               "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -2421,22 +2005,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -2495,22 +2063,6 @@
                 }
               ],
               "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -2571,22 +2123,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -2634,22 +2170,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -2696,22 +2216,6 @@
                 }
               ],
               "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -2771,22 +2275,6 @@
                 }
               ],
               "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -2911,22 +2399,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -2986,22 +2458,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "requestBody": {
@@ -3060,22 +2516,6 @@
                 }
               ],
               "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -3218,22 +2658,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -3266,7 +2690,7 @@
           "administration"
         ],
         "summary": "Get Available Roles",
-        "description": "Papeis de acesso selecionaveis no cadastro de funcionario, de\nacordo com o tipo profissional escolhido (ESPECIFICACAO_FRONTEND.md\nsecao 7.11.1).",
+        "description": "Papeis de acesso selecionaveis no cadastro de funcionario, de\nacordo com o tipo profissional escolhido.",
         "operationId": "get_available_roles_admin_employees_available_roles_get",
         "parameters": [
           {
@@ -3291,22 +2715,6 @@
                 }
               ],
               "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -3367,22 +2775,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -3439,22 +2831,6 @@
                 }
               ],
               "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -3570,22 +2946,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -3645,22 +3005,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -3719,22 +3063,6 @@
                 }
               ],
               "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -3804,22 +3132,6 @@
                 }
               ],
               "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -3901,22 +3213,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "requestBody": {
@@ -3996,22 +3292,6 @@
                 }
               ],
               "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -4146,22 +3426,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -4221,22 +3485,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -4294,22 +3542,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "requestBody": {
@@ -4346,84 +3578,6 @@
         }
       }
     },
-    "/admin/users/{user_id}/revoke-sessions": {
-      "post": {
-        "tags": [
-          "administration"
-        ],
-        "summary": "Revoke User Sessions",
-        "operationId": "revoke_user_sessions_admin_users__user_id__revoke_sessions_post",
-        "parameters": [
-          {
-            "name": "user_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "User Id"
-            }
-          },
-          {
-            "name": "X-Dev-Subject",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RevokeSessionsRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/admin/care-units": {
       "post": {
         "tags": [
@@ -4446,22 +3600,6 @@
                 }
               ],
               "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -4586,22 +3724,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -4660,22 +3782,6 @@
                 }
               ],
               "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -4746,22 +3852,6 @@
                 }
               ],
               "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -4877,22 +3967,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -4952,22 +4026,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -5026,22 +4084,6 @@
                 }
               ],
               "title": "X-Dev-Subject"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -5112,22 +4154,6 @@
               ],
               "title": "X-Dev-Subject"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "requestBody": {
@@ -5175,7 +4201,7 @@
           "CRITICAL"
         ],
         "title": "AlertSeverity",
-        "description": "Severidade de um alerta de anomalia (ESCOPO_PROJETO.md secao 4.5).\n\nDeliberadamente distinto de `RiskLevelCode`: um alerta de anomalia e um\ndesvio estatistico em relacao ao proprio historico recente do paciente\n(monitoramento preventivo), nao uma classificacao clinica de risco - o\nrisco continua vindo exclusivamente do motor de regras deterministico\n(secao 3.1 do escopo, \"o LLM/estatistica nao sera a fonte de verdade da\nclassificacao\"). Nunca alimenta nem substitui `RiskConsolidation`."
+        "description": "Severidade de um alerta de anomalia.\n\nDeliberadamente distinto de `RiskLevelCode`: um alerta de anomalia e um\ndesvio estatistico em relacao ao proprio historico recente do paciente\n(monitoramento preventivo), nao uma classificacao clinica de risco - o\nrisco continua vindo exclusivamente do motor de regras deterministico\n(LLM e estatistica nunca sao a fonte de verdade da classificacao).\nNunca alimenta nem substitui `RiskConsolidation`."
       },
       "AlertSeverityCounts": {
         "properties": {
@@ -5197,7 +4223,7 @@
         },
         "type": "object",
         "title": "AlertSeverityCounts",
-        "description": "Quantidade de alertas por severidade para um paciente, usada nos\n\"big numbers\" da tela de paciente (ESPECIFICACAO_FRONTEND.md - painel\nde alertas). Conta todos os status (aberto, reconhecido, escalado,\nencerrado); o filtro por status continua disponivel na listagem\ndetalhada apos escolher uma severidade."
+        "description": "Quantidade de alertas por severidade para um paciente, usada nos\n\"big numbers\" do painel de alertas da tela de paciente. Conta todos\nos status (aberto, reconhecido, escalado, encerrado); o filtro por\nstatus continua disponivel na listagem detalhada apos escolher uma\nseveridade."
       },
       "AlertStatus": {
         "type": "string",
@@ -5208,7 +4234,7 @@
           "RESOLVED"
         ],
         "title": "AlertStatus",
-        "description": "Ciclo de vida de um alerta de anomalia (ESCOPO_PROJETO.md secao 4.5:\n\"o fluxo devera registrar reconhecimento, responsavel, tempo de\nresposta, escalonamento e encerramento\")."
+        "description": "Ciclo de vida de um alerta de anomalia. O fluxo registra\nreconhecimento, responsavel, tempo de resposta, escalonamento e\nencerramento."
       },
       "AnalysisClinicalSupportSummaryRead": {
         "properties": {
@@ -5494,7 +4520,7 @@
           "conclusive_rate_percent"
         ],
         "title": "AnalysisStatsRead",
-        "description": "Estatisticas agregadas de todas as analises JA CONSOLIDADAS\n(com `RiskConsolidation` gravada) da instituicao do usuario logado -\nalimenta os \"big numbers\" da tela de revisao da analise\n(ESPECIFICACAO_FRONTEND.md secao 7.7), dando contexto de quao\nfrequentemente o motor de regras consegue classificar (`MATCHED`)\nversus fica inconclusivo, entre todas as analises ja processadas.\nNao e uma metrica de acuracia clinica validada contra um \"gabarito\" -\ne a proporcao de analises com resultado conclusivo (`MATCHED`) sobre o\ntotal de analises consolidadas."
+        "description": "Estatisticas agregadas de todas as analises JA CONSOLIDADAS\n(com `RiskConsolidation` gravada) da instituicao do usuario logado -\nalimenta os \"big numbers\" da tela de revisao da analise, dando\ncontexto de quao frequentemente o motor de regras consegue classificar (`MATCHED`)\nversus fica inconclusivo, entre todas as analises ja processadas.\nNao e uma metrica de acuracia clinica validada contra um \"gabarito\" -\ne a proporcao de analises com resultado conclusivo (`MATCHED`) sobre o\ntotal de analises consolidadas."
       },
       "AuditCategory": {
         "type": "string",
@@ -5510,7 +4536,7 @@
           "AUDIT"
         ],
         "title": "AuditCategory",
-        "description": "Categoria do evento de auditoria (ESCOPO_PROJETO.md secao 6.14)."
+        "description": "Categoria do evento de auditoria."
       },
       "AuditEventRead": {
         "properties": {
@@ -5687,7 +4713,7 @@
           "ERROR"
         ],
         "title": "AuditResult",
-        "description": "Resultado de um evento de auditoria (requirements.md Requirement 14.3)."
+        "description": "Resultado de um evento de auditoria."
       },
       "AvailableRolesRead": {
         "properties": {
@@ -5708,7 +4734,7 @@
           "roles"
         ],
         "title": "AvailableRolesRead",
-        "description": "Papeis de acesso permitidos para um tipo profissional\n(ESPECIFICACAO_FRONTEND.md secao 7.11 - selecionavel no cadastro de\nfuncionario)."
+        "description": "Papeis de acesso permitidos para um tipo profissional, selecionavel\nno cadastro de funcionario."
       },
       "BreakGlassGrantRead": {
         "properties": {
@@ -5781,7 +4807,7 @@
           "justification"
         ],
         "title": "BreakGlassRequest",
-        "description": "Solicitacao de acesso de emergencia (ESCOPO_PROJETO.md secao 5.2).\n\nSempre exige justificativa nao vazia; `duration_seconds` e limitado a\nno maximo 4 horas para nao se tornar um vinculo assistencial informal."
+        "description": "Solicitacao de acesso de emergencia.\n\nSempre exige justificativa nao vazia; `duration_seconds` e limitado a\nno maximo 4 horas para nao se tornar um vinculo assistencial informal."
       },
       "CareUnitCreate": {
         "properties": {
@@ -6531,7 +5557,7 @@
           "ENFERMEIRO"
         ],
         "title": "EmployeeProfessionalType",
-        "description": "Profissao-base do funcionario (ESCOPO_PROJETO.md secao 5.3), distinta\nda especialidade medica (mais granular, ex: \"Cardiologia\", e opcional).\n\nDetermina quais papeis de acesso (`UserRole`) o funcionario pode\nreceber ao ser cadastrado: um Enfermeiro so pode ocupar o papel\nENFERMEIRO; um Medico pode ocupar MEDICO ou qualquer papel\nadministrativo/de auditoria (ADMINISTRADOR_TECNICO,\nADMINISTRADOR_CLINICO, AUDITOR) - ver\n`app.administration.service.ALLOWED_ROLES_BY_PROFESSIONAL_TYPE`."
+        "description": "Profissao-base do funcionario, distinta\nda especialidade medica (mais granular, ex: \"Cardiologia\", e opcional).\n\nDetermina quais papeis de acesso (`UserRole`) o funcionario pode\nreceber ao ser cadastrado: um Enfermeiro so pode ocupar o papel\nENFERMEIRO; um Medico pode ocupar MEDICO ou qualquer papel\nadministrativo/de auditoria (ADMINISTRADOR_TECNICO,\nADMINISTRADOR_CLINICO, AUDITOR) - ver\n`app.administration.service.ALLOWED_ROLES_BY_PROFESSIONAL_TYPE`."
       },
       "EmployeeRead": {
         "properties": {
@@ -6738,10 +5764,6 @@
             "type": "string",
             "title": "Llm Openai Model"
           },
-          "llm_bedrock_model": {
-            "type": "string",
-            "title": "Llm Bedrock Model"
-          },
           "llm_gemini_model": {
             "type": "string",
             "title": "Llm Gemini Model"
@@ -6770,19 +5792,9 @@
             "type": "boolean",
             "title": "Image Recognition Enabled"
           },
-          "image_recognition_provider": {
-            "$ref": "#/components/schemas/ImageRecognitionProvider"
-          },
-          "vision_rekognition_video_enabled": {
-            "type": "boolean",
-            "title": "Vision Rekognition Video Enabled"
-          },
           "sentiment_analysis_enabled": {
             "type": "boolean",
             "title": "Sentiment Analysis Enabled"
-          },
-          "sentiment_analysis_provider": {
-            "$ref": "#/components/schemas/SentimentAnalysisProvider"
           },
           "auto_clinical_support_enabled": {
             "type": "boolean",
@@ -6829,31 +5841,6 @@
               }
             ]
           },
-          "bedrock_model_options": {
-            "items": {
-              "$ref": "#/components/schemas/ModelOption"
-            },
-            "type": "array",
-            "title": "Bedrock Model Options",
-            "default": [
-              {
-                "value": "anthropic.claude-3-5-sonnet-20241022-v2:0",
-                "label": "Claude 3.5 Sonnet (recomendado - qualidade multilingue)"
-              },
-              {
-                "value": "anthropic.claude-3-5-haiku-20241022-v1:0",
-                "label": "Claude 3.5 Haiku (custo baixo)"
-              },
-              {
-                "value": "amazon.nova-pro-v1:0",
-                "label": "Amazon Nova Pro"
-              },
-              {
-                "value": "amazon.nova-lite-v1:0",
-                "label": "Amazon Nova Lite (custo baixo)"
-              }
-            ]
-          },
           "gemini_model_options": {
             "items": {
               "$ref": "#/components/schemas/ModelOption"
@@ -6886,7 +5873,6 @@
           "llm_provider_enabled",
           "llm_provider",
           "llm_openai_model",
-          "llm_bedrock_model",
           "llm_gemini_model",
           "modality_audio_enabled",
           "modality_video_enabled",
@@ -6894,10 +5880,7 @@
           "vision_detection_enabled",
           "vision_pose_enabled",
           "image_recognition_enabled",
-          "image_recognition_provider",
-          "vision_rekognition_video_enabled",
           "sentiment_analysis_enabled",
-          "sentiment_analysis_provider",
           "auto_clinical_support_enabled",
           "updated_at",
           "updated_by"
@@ -6939,19 +5922,6 @@
               }
             ],
             "title": "Llm Openai Model"
-          },
-          "llm_bedrock_model": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 200,
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Llm Bedrock Model"
           },
           "llm_gemini_model": {
             "anyOf": [
@@ -7032,27 +6002,6 @@
             ],
             "title": "Image Recognition Enabled"
           },
-          "image_recognition_provider": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ImageRecognitionProvider"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "vision_rekognition_video_enabled": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Vision Rekognition Video Enabled"
-          },
           "sentiment_analysis_enabled": {
             "anyOf": [
               {
@@ -7063,16 +6012,6 @@
               }
             ],
             "title": "Sentiment Analysis Enabled"
-          },
-          "sentiment_analysis_provider": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/SentimentAnalysisProvider"
-              },
-              {
-                "type": "null"
-              }
-            ]
           },
           "auto_clinical_support_enabled": {
             "anyOf": [
@@ -7103,25 +6042,15 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
-      "ImageRecognitionProvider": {
-        "type": "string",
-        "enum": [
-          "AWS_REKOGNITION",
-          "AZURE_VISION"
-        ],
-        "title": "ImageRecognitionProvider",
-        "description": "Adaptador de reconhecimento de imagem usado pelo enriquecimento\nopcional do processador IMAGE (ADR 0016 \"atualizacao\").\n\n`AWS_REKOGNITION` e o adaptador real via `boto3` (Amazon Rekognition\nImage `DetectLabels`, referencia direta ao objeto no S3); `AZURE_VISION`\ne o adaptador real via REST (Azure AI Vision, Image Analysis - envia os\nbytes lidos do storage aprovado diretamente no corpo da requisicao, sem\nexigir S3). Selecionado por `FeatureFlags.image_recognition_provider`\n(banco, mutavel em runtime), so consultado quando\n`image_recognition_enabled` estiver ligado."
-      },
       "LlmProvider": {
         "type": "string",
         "enum": [
           "LOCAL",
           "OPENAI",
-          "BEDROCK",
           "GEMINI"
         ],
         "title": "LlmProvider",
-        "description": "Adaptador de LLM usado pelo consolidador de risco (item 12).\n\n`LOCAL` e um adaptador deterministico (template fixo, sem chamada de\nrede) para desenvolvimento/testes; `OPENAI` e o adaptador real via\n`openai` (secao 5.5/8.8: \"usar LLM exclusivamente para organizacao,\nsintese e explicacao\"); `BEDROCK` e o adaptador real via Amazon\nBedrock (`boto3`, Converse API com Structured Outputs - mesma garantia\nde schema rigido do adaptador OpenAI, credenciais IAM do processo em\nvez de chave de API externa); `GEMINI` esta registrado como opcao na\ntela de feature flags (`app.feature_flags`) mas AINDA NAO TEM\nadaptador real implementado - selecionar `GEMINI` falha explicitamente\n(nunca finge funcionar). Selecionado por `FeatureFlags` (banco, mutavel\nem runtime via tela de administracao), com `Settings.llm_provider`\n(.env) como fallback quando a linha de flags ainda nao existir."
+        "description": "Adaptador de LLM usado pelo consolidador de risco.\n\n`LOCAL` e um adaptador deterministico (template fixo, sem chamada de\nrede) para desenvolvimento/testes; `OPENAI` e o adaptador real via\n`openai` (uso do LLM restrito a organizacao, sintese e explicacao,\nnunca como fonte de classificacao de risco); `GEMINI` esta registrado\ncomo opcao na tela de feature flags (`app.feature_flags`) mas AINDA\nNAO TEM adaptador real implementado - selecionar `GEMINI` falha\nexplicitamente (nunca finge funcionar). Selecionado por\n`FeatureFlags` (banco, mutavel em runtime via tela de administracao),\ncom `Settings.llm_provider` (.env) como fallback quando a linha de\nflags ainda nao existir."
       },
       "MediaAssetRead": {
         "properties": {
@@ -7328,7 +6257,7 @@
           "EXPIRED"
         ],
         "title": "MediaUploadState",
-        "description": "Ciclo de vida do upload de uma midia, ate ser promovida ou rejeitada.\n\nDistinto de `ModalityStatus` (que cobre o PROCESSAMENTO da modalidade\napos a midia estar aprovada - sera usado a partir do orquestrador,\nESCOPO_PROJETO.md secao 6.6/6.7). Este enum cobre apenas a etapa de\nupload/quarentena descrita na secao 6.10.1: \"arquivos entrarao em\nbucket/prefixo de quarentena e somente serao promovidos apos validacao\ne varredura antimalware\"."
+        "description": "Ciclo de vida do upload de uma midia, ate ser promovida ou rejeitada.\n\nDistinto de `ModalityStatus` (que cobre o PROCESSAMENTO da modalidade\napos a midia estar aprovada - sera usado a partir do orquestrador).\nEste enum cobre apenas a etapa de upload/quarentena: os arquivos\nentram em bucket/prefixo de quarentena e so sao promovidos apos\nvalidacao e varredura antimalware."
       },
       "MedicalSpecialtyCreate": {
         "properties": {
@@ -7414,7 +6343,7 @@
           "TEXT"
         ],
         "title": "ModalityType",
-        "description": "Modalidades suportadas pela analise multimodal (ESCOPO_PROJETO.md secao 5.4)."
+        "description": "Modalidades suportadas pela analise multimodal."
       },
       "ModelOption": {
         "properties": {
@@ -7600,7 +6529,7 @@
           "INVALID"
         ],
         "title": "ObservationReadingQuality",
-        "description": "Qualidade da leitura de uma observacao clinica.\n\nVer \"Contexto Minimo de Toda Medicao\" em CLASSIFICACAO_DADOS_CLINICOS.md."
+        "description": "Qualidade da leitura de uma observacao clinica, considerando o\ncontexto minimo exigido para toda medicao clinica registrada."
       },
       "ObservationType": {
         "type": "string",
@@ -7619,7 +6548,7 @@
           "SEIZURE"
         ],
         "title": "ObservationType",
-        "description": "Tipos de dado clinico do cadastro de paciente (ESCOPO_PROJETO.md secao 5.1)."
+        "description": "Tipos de dado clinico do cadastro de paciente."
       },
       "PageResponse_AnalysisRead_": {
         "properties": {
@@ -8098,7 +7027,7 @@
           "registered_sex"
         ],
         "title": "PatientCreate",
-        "description": "Corpo de POST /patients.\n\nA idade nunca e recebida nem armazenada: e sempre derivada de\n`birth_date` (Requirement 1.3). `height_cm` e opcional (permite\ncompletar o cadastro sem a medida em maos e preencher depois via\nPATCH) - faixa fisiologicamente possivel de adulto/adolescente\n(30-272 cm, mesmo limite usado por `ObservationType.HEIGHT` em\n`app.observations.validation`, para manter as duas fontes de altura\nconsistentes)."
+        "description": "Corpo de POST /patients.\n\nA idade nunca e recebida nem armazenada: e sempre derivada de\n`birth_date`. `height_cm` e opcional (permite\ncompletar o cadastro sem a medida em maos e preencher depois via\nPATCH) - faixa fisiologicamente possivel de adulto/adolescente\n(30-272 cm, mesmo limite usado por `ObservationType.HEIGHT` em\n`app.observations.validation`, para manter as duas fontes de altura\nconsistentes)."
       },
       "PatientRead": {
         "properties": {
@@ -8308,7 +7237,7 @@
           "full_name"
         ],
         "title": "ProfessionalRead",
-        "description": "Item do filtro \"Medico\" do historico de analises\n(ESPECIFICACAO_FRONTEND.md secao 7.9) e do campo pesquisavel de\nfuncionario no registro de observacao clinica. `external_subject` e o\nmesmo valor gravado em `Analysis.created_by`, usado como valor do\nfiltro. `registration_number` vem do cadastro de funcionario\n(`app.administration.models.Employee`) vinculado a este usuario, para\nexibir \"matricula - nome\"; fica `None` quando o usuario nao tem um\nfuncionario administrativo vinculado (caso legado/de teste)."
+        "description": "Item do filtro \"Medico\" do historico de analises e do campo\npesquisavel de funcionario no registro de observacao clinica.\n`external_subject` e o\nmesmo valor gravado em `Analysis.created_by`, usado como valor do\nfiltro. `registration_number` vem do cadastro de funcionario\n(`app.administration.models.Employee`) vinculado a este usuario, para\nexibir \"matricula - nome\"; fica `None` quando o usuario nao tem um\nfuncionario administrativo vinculado (caso legado/de teste)."
       },
       "PublishRuleSetRequest": {
         "properties": {
@@ -8439,21 +7368,6 @@
         ],
         "title": "ResolveAlertRequest"
       },
-      "RevokeSessionsRequest": {
-        "properties": {
-          "reason": {
-            "type": "string",
-            "maxLength": 500,
-            "minLength": 1,
-            "title": "Reason"
-          }
-        },
-        "type": "object",
-        "required": [
-          "reason"
-        ],
-        "title": "RevokeSessionsRequest"
-      },
       "RollbackRuleSetRequest": {
         "properties": {
           "approver_employee_id": {
@@ -8492,7 +7406,7 @@
           "INCONCLUSIVE"
         ],
         "title": "RuleEvaluationOutcome",
-        "description": "Resultado de uma execucao do motor de regras deterministico.\n\n`Inconclusivo` explicito e nao um nivel de risco (ESCOPO_PROJETO.md\nsecao 5.6: \"Inconclusivo nao e um nivel de risco e nao pertence a este\nenum\" referindo-se a `RiskLevelCode`); esta e a modelagem correspondente\nno motor de execucao."
+        "description": "Resultado de uma execucao do motor de regras deterministico.\n\n`Inconclusivo` explicito e nao um nivel de risco - nao pertence ao\nenum `RiskLevelCode`; esta e a modelagem correspondente no motor de\nexecucao."
       },
       "RuleEvaluationRequest": {
         "properties": {
@@ -8623,15 +7537,6 @@
         ],
         "title": "RuleEvaluationResponse"
       },
-      "SentimentAnalysisProvider": {
-        "type": "string",
-        "enum": [
-          "AWS_COMPREHEND",
-          "AZURE_LANGUAGE"
-        ],
-        "title": "SentimentAnalysisProvider",
-        "description": "Adaptador de analise de sentimento usado pelo enriquecimento\nopcional CONTEXTUAL dos processadores TEXT/AUDIO (ESCOPO_PROJETO.md\nsecao 4.2).\n\n`AWS_COMPREHEND` e o adaptador real via `boto3` (Amazon Comprehend\n`DetectSentiment`, suporte a `pt`); `AZURE_LANGUAGE` e o adaptador real\nvia REST (Azure AI Language, Sentiment Analysis, suporte a `pt`).\nSelecionado por `FeatureFlags.sentiment_analysis_provider` (banco,\nmutavel em runtime), so consultado quando `sentiment_analysis_enabled`\nestiver ligado."
-      },
       "UserRead": {
         "properties": {
           "id": {
@@ -8682,7 +7587,7 @@
           "AUDITOR"
         ],
         "title": "UserRole",
-        "description": "Perfis minimos de acesso (ESCOPO_PROJETO.md secao 5.2).\n\nA autorizacao real considera papel + instituicao + unidade + vinculo\nassistencial + recurso + acao + contexto; este enum cobre apenas o eixo\n\"papel\", usado pelas dependencias `require_role` (app/core/security.py)\ncomo primeira camada de controle de acesso."
+        "description": "Perfis minimos de acesso.\n\nA autorizacao real considera papel + instituicao + unidade + vinculo\nassistencial + recurso + acao + contexto; este enum cobre apenas o eixo\n\"papel\", usado pelas dependencias `require_role` (app/core/security.py)\ncomo primeira camada de controle de acesso."
       },
       "UserUpdate": {
         "properties": {

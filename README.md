@@ -188,8 +188,9 @@ make dev
 ```
 
 Acesse `http://localhost:5173` — a página inicial confirma a conexão com
-`GET /health` da API. A documentação interativa da API fica em
-`http://localhost:8000/docs`.
+`GET /health` da API. A documentação interativa da API (Swagger UI) fica
+em `http://localhost:8000/docs` — ver seção 7.5 abaixo para detalhes e
+outras formas de consultar o contrato.
 
 ### 7.2 Guia completo, passo a passo, por sistema operacional
 
@@ -212,6 +213,29 @@ Por padrão, tudo roda com adaptadores locais, sem nenhuma credencial
 externa. Para ligar Azure AI Speech/Language/Vision, OpenAI ou a visão
 computacional real de vídeo (OpenPose/YOLOv8):
 [`docs/MANUAL_INSTALACAO.md`](docs/MANUAL_INSTALACAO.md).
+
+### 7.5 Documentação interativa da API (Swagger / OpenAPI)
+
+A API expõe o contrato OpenAPI automaticamente via FastAPI, sem
+configuração adicional — basta a API estar rodando (seção 7.1):
+
+| URL | Conteúdo |
+| --- | --- |
+| `http://localhost:8000/docs` | **Swagger UI** — explorar e testar cada endpoint interativamente (inclui o botão "Authorize" para preencher o header `X-Dev-Subject`) |
+| `http://localhost:8000/redoc` | **ReDoc** — visualização alternativa, somente leitura, do mesmo contrato |
+| `http://localhost:8000/openapi.json` | Schema OpenAPI 3.1 bruto, gerado em runtime a partir das rotas e schemas Pydantic atuais |
+
+Além disso, um **snapshot versionado** do contrato fica em
+[`docs/contracts/openapi.json`](docs/contracts/openapi.json) — permite
+revisar diffs de contrato em pull requests sem precisar rodar a API.
+Sempre que uma rota ou schema mudar, regenere o snapshot:
+
+```bash
+make export-openapi
+```
+
+Ver [`docs/contracts/README.md`](docs/contracts/README.md) para a
+política de versionamento/compatibilidade do contrato.
 
 ---
 
