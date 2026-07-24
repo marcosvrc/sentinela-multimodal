@@ -424,3 +424,167 @@ class TestModalityAttention:
         )
         modality_types = {item["modality_type"] for item in content["modality_attention"]}
         assert modality_types == {"TEXT"}
+
+
+class TestModalitySummaryAndClinicalCorrelation:
+    """`content["modality_summary"]` (tabela consolidada: qualidade +
+    relevancia clinica + resumo + uso na analise final) e `content[
+    "clinical_correlation_summary"]` (resumo final deterministico
+    correlacionando apenas modalidades clinicamente relevantes)."""
+
+    def test_empty_findings_yields_empty_summary_and_no_included_modality(self) -> None:
+        content = build_report_content(
+            patient=_PATIENT,
+            analysis=_ANALYSIS,
+            risk=None,
+            modality_findings=[],
+            protocol_action_description=None,
+            review=_draft_review(),
+        )
+        assert content["modality_summary"] == []
+        assert content["clinical_correlation_summary"]["included_modality_types"] == []
+        assert content["clinical_correlation_summary"]["excluded_modality_types"] == []
+        assert "nenhuma modalidade" in content["clinical_correlation_summary"]["text"].lower()
+
+    def test_only_quality_finding_is_not_clinically_relevant_and_excluded(self) -> None:
+        finding = ReportModalityFinding(
+            modality_type="IMAGE",
+            nature="ORIGINAL_DATA",
+            quality_state="ADEQUATE",
+            quality_metrics={"width": 800, "height": 600},
+            quality_factors=[],
+            summary="Imagem 800x600.",
+            created_at="2026-07-11T10:05:00+00:00",
+        )
+        content = build_report_content(
+            patient=_PATIENT,
+            analysis=_ANALYSIS,
+            risk=None,
+            modality_findings=[finding],
+            protocol_action_description=None,
+            review=_draft_review(),
+        )
+        assert content["modality_summary"] == [
+            {
+                "modality_type": "IMAGE",
+                "quality_state": "ADEQUATE",
+                "clinically_relevant": False,
+                "summary": "Imagem 800x600.",
+                "used_in_final_analysis": False,
+            }
+        ]
+        assert content["clinical_correlation_summary"]["included_modality_types"] == []
+        assert content["clinical_correlation_summary"]["excluded_modality_types"] == ["IMAGE"]
+
+    def test_relevant_model_observation_marks_modality_as_used_in_final_analysis(self) -> None:
+        quality_finding = ReportModalityFinding(
+            modality_type="TEXT",
+            nature="ORIGINAL_DATA",
+            quality_state="ADEQUATE",
+            quality_metrics={"length": 30, "word_count": 5},
+            quality_factors=[],
+            summary="Texto com 30 caracteres (5 palavras).",
+            created_at="2026-07-11T10:05:00+00:00",
+        )
+        observation_finding = ReportModalityFinding(
+            modality_type="TEXT",
+            nature="MODEL_OBSERVATION",
+            quality_state="ADEQUATE",
+            quality_metrics={"term": "dor toracica"},
+            quality_factors=[],
+            summary="Termo clinico candidato 'dor toracica'.",
+            created_at="2026-07-11T10:05:01+00:00",
+        )
+        content = build_report_content(
+            patient=_PATIENT,
+            analysis=_ANALYSIS,
+            risk=None,
+            modality_findings=[quality_finding, observation_finding],
+            protocol_action_description=None,
+            review=_draft_review(),
+        )
+        text_summary = content["modality_summary"][0]
+        assert text_summary["modality_type"] == "TEXT"
+        assert text_summary["quality_state"] == "ADEQUATE"
+        assert text_summary["clinically_relevant"] is True
+        assert text_summary["used_in_final_analysis"] is True
+        assert "dor toracica" in text_summary["summary"]
+
+        correlation = content["clinical_correlation_summary"]
+        assert correlation["included_modality_types"] == ["TEXT"]
+        assert correlation["excluded_modality_types"] == []
+        assert "TEXT" in correlation["text"]
+
+    def test_final_summary_correlates_only_clinically_relevant_modalities(self) -> None:
+        """Duas modalidades presentes, so uma clinicamente relevante -
+        o resumo final deve incluir so a relevante e listar a outra em
+        `excluded_modality_types`."""
+        irrelevant_image = ReportModalityFinding(
+            modality_type="IMAGE",
+            nature="MODEL_OBSERVATION",
+            quality_state="ADEQUATE",
+            quality_metrics={"clinical_relevance": "NOT_RELEVANT"},
+            quality_factors=[],
+            summary="Rotulos: paisagem.",
+            created_at="2026-07-11T10:05:00+00:00",
+        )
+        relevant_video = ReportModalityFinding(
+            modality_type="VIDEO",
+            nature="ASSISTED_HYPOTHESIS",
+            quality_state="ADEQUATE",
+            quality_metrics={"label": "possivel_ausencia_de_pessoa_no_campo_de_captura"},
+            quality_factors=[],
+            summary="Nenhuma pessoa detectada nos quadros amostrados.",
+            created_at="2026-07-11T10:05:00+00:00",
+        )
+        content = build_report_content(
+            patient=_PATIENT,
+            analysis=_ANALYSIS,
+            risk=None,
+            modality_findings=[irrelevant_image, relevant_video],
+            protocol_action_description=None,
+            review=_draft_review(),
+        )
+        by_modality = {item["modality_type"]: item for item in content["modality_summary"]}
+        assert by_modality["IMAGE"]["used_in_final_analysis"] is False
+        assert by_modality["VIDEO"]["used_in_final_analysis"] is True
+
+        correlation = content["clinical_correlation_summary"]
+        assert correlation["included_modality_types"] == ["VIDEO"]
+        assert correlation["excluded_modality_types"] == ["IMAGE"]
+        assert "IMAGE" not in correlation["text"]
+        assert "VIDEO" in correlation["text"]
+
+    def test_worst_quality_state_wins_when_modality_has_multiple_original_data_findings(
+        self,
+    ) -> None:
+        """Uma analise pode ter mais de uma midia da mesma modalidade -
+        o pior estado de qualidade entre elas deve prevalecer no
+        resumo consolidado."""
+        adequate = ReportModalityFinding(
+            modality_type="AUDIO",
+            nature="ORIGINAL_DATA",
+            quality_state="ADEQUATE",
+            quality_metrics={},
+            quality_factors=[],
+            summary="Audio 1 adequado.",
+            created_at="2026-07-11T10:05:00+00:00",
+        )
+        insufficient = ReportModalityFinding(
+            modality_type="AUDIO",
+            nature="ORIGINAL_DATA",
+            quality_state="INSUFFICIENT",
+            quality_metrics={},
+            quality_factors=["duracao_curta"],
+            summary="Audio 2 curto demais.",
+            created_at="2026-07-11T10:06:00+00:00",
+        )
+        content = build_report_content(
+            patient=_PATIENT,
+            analysis=_ANALYSIS,
+            risk=None,
+            modality_findings=[adequate, insufficient],
+            protocol_action_description=None,
+            review=_draft_review(),
+        )
+        assert content["modality_summary"][0]["quality_state"] == "INSUFFICIENT"

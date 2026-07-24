@@ -38,6 +38,15 @@ clinica ja aplicada ao guardrail do apoio automatico (`app.processors.
 clinical_relevance.is_clinically_relevant`). NUNCA e um calculo de risco
 nem influencia `calculated_risk` - ver docstring de `ModalityAttentionLevel`
 em `app.core.enums`.
+
+`modality_summary` consolida em UMA UNICA linha por modalidade as
+perguntas antes respondidas cruzando `modality_attention` (relevancia) com
+`modality_evidence` (qualidade): qualidade agregada, relevancia clinica
+(bool), resumo textual e se a modalidade entra no resumo final
+correlacionado. `clinical_correlation_summary` e esse resumo final -
+deterministico (sem LLM), correlacionando apenas as modalidades marcadas
+como clinicamente relevantes em `modality_summary`. Ver `_compute_
+modality_summary`/`_compute_clinical_correlation_summary` abaixo.
 """
 
 from __future__ import annotations
@@ -167,6 +176,115 @@ def _compute_modality_attention(modality_findings: list[ReportModalityFinding]) 
     return result
 
 
+# Severidade de `ModalityQualityState` para agregar o pior estado dentre
+# os achados `ORIGINAL_DATA` de uma mesma modalidade (uma analise pode ter
+# mais de uma midia da mesma modalidade) - usado por
+# `_compute_modality_summary`.
+_QUALITY_STATE_SEVERITY = {
+    "ADEQUATE": 0,
+    "MODERATE": 1,
+    "INSUFFICIENT": 2,
+    "INVALID": 3,
+}
+
+
+def _compute_modality_summary(modality_findings: list[ReportModalityFinding]) -> list[dict]:
+    """Consolida, em UMA linha por modalidade, as informacoes hoje
+    espalhadas entre `modality_attention` (relevancia clinica) e
+    `modality_evidence` (qualidade tecnica): qualidade agregada (pior
+    estado entre os achados `ORIGINAL_DATA` da modalidade), relevancia
+    clinica (mesma regra de `_compute_modality_attention`/`is_clinically_
+    relevant`), um resumo textual e se a modalidade entra no resumo final
+    correlacionado (`_compute_clinical_correlation_summary` abaixo).
+
+    Fonte unica para a tabela "Resumo por modalidade" da tela de revisao -
+    substitui a leitura fragmentada que antes exigia cruzar `modality_
+    attention` (badges) com `modality_evidence` (tabela de achados) para
+    responder as mesmas 4 perguntas por modalidade. So lista modalidades
+    PRESENTES nesta analise (mesmo criterio de `_compute_modality_
+    attention`)."""
+    quality_state_by_modality: dict[str, str] = {}
+    quality_summaries_by_modality: dict[str, list[str]] = {}
+    present_modalities: list[str] = []
+
+    for finding in modality_findings:
+        if finding.modality_type not in present_modalities:
+            present_modalities.append(finding.modality_type)
+        if finding.nature != FindingNature.ORIGINAL_DATA.value:
+            continue
+        quality_summaries_by_modality.setdefault(finding.modality_type, []).append(
+            finding.summary
+        )
+        current_state = quality_state_by_modality.get(finding.modality_type)
+        if current_state is None or _QUALITY_STATE_SEVERITY.get(
+            finding.quality_state, 0
+        ) > _QUALITY_STATE_SEVERITY.get(current_state, 0):
+            quality_state_by_modality[finding.modality_type] = finding.quality_state
+
+    attention_by_modality = {
+        item["modality_type"]: item for item in _compute_modality_attention(modality_findings)
+    }
+
+    ordered_modalities = [m.value for m in ModalityType if m.value in present_modalities]
+
+    result: list[dict] = []
+    for modality_type in ordered_modalities:
+        attention = attention_by_modality.get(modality_type)
+        clinically_relevant = bool(
+            attention and attention["level"] != ModalityAttentionLevel.NONE.value
+        )
+        relevant_summary = "; ".join(attention["summaries"]) if attention else ""
+        quality_summary = "; ".join(quality_summaries_by_modality.get(modality_type, []))
+        result.append(
+            {
+                "modality_type": modality_type,
+                "quality_state": quality_state_by_modality.get(modality_type),
+                "clinically_relevant": clinically_relevant,
+                "summary": (
+                    relevant_summary
+                    or quality_summary
+                    or "Sem dados suficientes para resumo desta modalidade."
+                ),
+                # Criterio deliberadamente igual a `clinically_relevant`:
+                # so modalidades com achado clinicamente relevante
+                # confirmado entram no resumo final correlacionado
+                # (`clinical_correlation_summary`) - qualidade tecnica
+                # isolada (`ORIGINAL_DATA`) nunca e suficiente por si so.
+                "used_in_final_analysis": clinically_relevant,
+            }
+        )
+    return result
+
+
+def _compute_clinical_correlation_summary(modality_summary: list[dict]) -> dict:
+    """Resumo final determinístico (sem chamada de LLM - sempre
+    disponivel, mesmo sem credencial de nuvem configurada) que
+    correlaciona APENAS as modalidades marcadas em `modality_summary`
+    como `used_in_final_analysis=True`. Distinto de `ai_summary`
+    (automatico, baseado em achados `ORIGINAL_DATA` sem filtro de
+    relevancia) e de `clinical_support_summary` (sob demanda, via LLM,
+    com filtro de relevancia hoje restrito a rotulos de imagem) - este
+    campo e a resposta direta ao "resumo final correlacionando apenas as
+    modalidades com dados clinicos"."""
+    included = [item for item in modality_summary if item["used_in_final_analysis"]]
+    excluded = [item for item in modality_summary if not item["used_in_final_analysis"]]
+
+    if not included:
+        text = (
+            "Nenhuma modalidade desta analise apresentou dados clinicamente "
+            "relevantes para correlacao."
+        )
+    else:
+        parts = [f"{item['modality_type']}: {item['summary']}" for item in included]
+        text = "Correlacao entre modalidades com dados clinicos - " + " | ".join(parts)
+
+    return {
+        "included_modality_types": [item["modality_type"] for item in included],
+        "excluded_modality_types": [item["modality_type"] for item in excluded],
+        "text": text,
+    }
+
+
 @dataclass(frozen=True)
 class ReportClinicalSupportSummary:
     """Ultimo resultado do botao "Analisar dados clinicos" (apoio a
@@ -218,6 +336,8 @@ def build_report_content(
         "llm_input_hash": risk.llm_input_hash if risk else None,
         "llm_output_hash": risk.llm_output_hash if risk else None,
     }
+
+    modality_summary = _compute_modality_summary(modality_findings)
 
     return {
         "identification": {
@@ -294,6 +414,17 @@ def build_report_content(
         # acima, agregados por modalidade, para apoiar a leitura rapida da
         # tela de revisao.
         "modality_attention": _compute_modality_attention(modality_findings),
+        # Tabela consolidada "Resumo por modalidade": uma linha por
+        # modalidade com qualidade + relevancia clinica + resumo + se
+        # entra no resumo final correlacionado - substitui a necessidade
+        # de cruzar `modality_attention` com `modality_evidence` na UI
+        # para responder as mesmas perguntas.
+        "modality_summary": modality_summary,
+        # Resumo final deterministico correlacionando APENAS as
+        # modalidades marcadas em `modality_summary` como
+        # `used_in_final_analysis=True` - ver docstring de
+        # `_compute_clinical_correlation_summary`.
+        "clinical_correlation_summary": _compute_clinical_correlation_summary(modality_summary),
         # Evidencia por modalidade e qualidade tecnica unificadas em uma
         # unica lista/tabela (uma linha por achado, com todas as colunas
         # juntas) - antes eram duas secoes separadas repetindo a mesma

@@ -214,6 +214,35 @@ export interface ReportContent {
     quality_state?: ModalityQualityState;
     quality_factors?: string[];
   }>;
+  /**
+   * Tabela consolidada "Resumo por modalidade": uma linha por modalidade
+   * com qualidade agregada, relevancia clinica, resumo textual e se a
+   * modalidade entra no resumo final correlacionado
+   * (`clinical_correlation_summary` abaixo). Substitui a necessidade de
+   * cruzar `modality_attention` com `modality_evidence` para responder as
+   * mesmas perguntas. Ausente em relatorios gerados antes desta secao -
+   * sempre tratar como possivelmente indefinido.
+   */
+  modality_summary?: Array<{
+    modality_type: string;
+    quality_state: ModalityQualityState | null;
+    clinically_relevant: boolean;
+    summary: string;
+    used_in_final_analysis: boolean;
+  }>;
+  /**
+   * Resumo final DETERMINISTICO (sem LLM, sempre disponivel) que
+   * correlaciona apenas as modalidades marcadas em `modality_summary`
+   * como `used_in_final_analysis=true`. Distinto de `ai_summary`
+   * (automatico, sem filtro de relevancia) e de `clinical_support_summary`
+   * (sob demanda, via LLM). Ausente em relatorios gerados antes desta
+   * secao.
+   */
+  clinical_correlation_summary?: {
+    included_modality_types: string[];
+    excluded_modality_types: string[];
+    text: string;
+  };
   inconsistencies: string[];
   protocol_conduct: string | null;
   professional_review: {

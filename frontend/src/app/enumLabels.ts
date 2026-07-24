@@ -16,7 +16,6 @@ import {
   AlertStatus,
   AuditCategory,
   AuditResult,
-  ModalityAttentionLevel,
   ModalityQualityState,
   ModalityType,
   ObservationReadingQuality,
@@ -97,18 +96,6 @@ export const RULE_EVALUATION_INCONCLUSIVE_REASON_LABELS: Record<string, string> 
 
 export function ruleEvaluationInconclusiveReasonLabel(reason: string): string {
   return RULE_EVALUATION_INCONCLUSIVE_REASON_LABELS[reason] ?? reason;
-}
-
-/** "Nivel de atencao por modalidade" (indicador VISUAL, nunca risco
- * clinico - ver `ReportContent.modality_attention`). */
-export const MODALITY_ATTENTION_LEVEL_LABELS: Record<string, string> = {
-  [ModalityAttentionLevel.NONE]: "Sem pontos de atenção",
-  [ModalityAttentionLevel.OBSERVATION]: "Observação",
-  [ModalityAttentionLevel.ATTENTION]: "Atenção",
-};
-
-export function modalityAttentionLevelLabel(level: string): string {
-  return MODALITY_ATTENTION_LEVEL_LABELS[level] ?? level;
 }
 
 export const MODALITY_QUALITY_STATE_LABELS: Record<string, string> = {

@@ -9,7 +9,6 @@ import { EmptyState } from "@/components/feedback/EmptyState";
 import { ErrorState } from "@/components/feedback/ErrorState";
 import { Skeleton } from "@/components/feedback/Skeleton";
 import { Button } from "@/components/ui/Button";
-import { ModalityAttentionBadge } from "@/components/ui/ModalityAttentionBadge";
 import { RiskBadge } from "@/components/ui/RiskBadge";
 import { Section } from "@/components/ui/Section";
 import { useDevSession } from "@/hooks/useDevSession";
@@ -63,6 +62,32 @@ const evidenceColumns: DataTableColumn<IndexedModalityEvidenceItem>[] = [
     key: "quality_factors",
     header: "Fatores de qualidade",
     render: ({ item }) => item.quality_factors?.join(", ") || "-",
+  },
+];
+
+type ModalitySummaryItem = NonNullable<ReportContent["modality_summary"]>[number];
+
+const modalitySummaryColumns: DataTableColumn<ModalitySummaryItem>[] = [
+  {
+    key: "modality_type",
+    header: "Modalidade",
+    render: (item) => modalityLabel(item.modality_type),
+  },
+  {
+    key: "quality_state",
+    header: "Qualidade",
+    render: (item) => (item.quality_state ? modalityQualityStateLabel(item.quality_state) : "-"),
+  },
+  {
+    key: "clinically_relevant",
+    header: "Dados clínicos?",
+    render: (item) => (item.clinically_relevant ? "Sim" : "Não"),
+  },
+  { key: "summary", header: "Resumo", render: (item) => item.summary },
+  {
+    key: "used_in_final_analysis",
+    header: "Usado na análise final",
+    render: (item) => (item.used_in_final_analysis ? "Sim" : "Não"),
   },
 ];
 
@@ -207,34 +232,38 @@ export function AnalysisReviewPage() {
 
       <AnalysisReviewStats content={content} stats={statsQuery.data} />
 
-      {content.modality_attention.length > 0 && (
+      {content.modality_summary && content.modality_summary.length > 0 && (
         <Section
-          title="Nível de atenção por modalidade"
-          description="Indicador visual de apoio à leitura, derivado das observações/hipóteses já listadas mais abaixo nesta tela. Nunca é um cálculo de risco clínico - o risco é sempre exclusivo do motor de regras deterministico, exibido acima."
+          title="Resumo por modalidade"
+          description="Para cada modalidade informada: qualidade dos dados, se há relação com informações clínicas, resumo do que foi encontrado e se será usado na análise final. Ausente apenas quando o relatório de qualquer modalidade contiver dados de qualidade."
         >
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-4)" }}>
-            {content.modality_attention.map((item) => (
-              <div
-                key={item.modality_type}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "var(--space-2)",
-                  minWidth: 160,
-                }}
-              >
-                <span style={{ fontWeight: 600, fontSize: 14 }}>
-                  {modalityLabel(item.modality_type)}
-                </span>
-                <ModalityAttentionBadge level={item.level} />
-                {item.relevant_findings_count > 0 && (
-                  <span style={{ color: "var(--color-text-muted)", fontSize: 13 }}>
-                    {item.relevant_findings_count} achado(s) considerado(s)
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
+          <DataTable
+            columns={modalitySummaryColumns}
+            rows={content.modality_summary}
+            getRowKey={(item) => item.modality_type}
+          />
+        </Section>
+      )}
+
+      {content.clinical_correlation_summary && (
+        <Section
+          title="Resumo final correlacionado"
+          description={
+            'Correlaciona apenas as modalidades marcadas como "usada na análise final" na ' +
+            "tabela acima. Resumo determinístico (não depende de provedor de IA em nuvem) - " +
+            "distinto do resumo assistido por IA abaixo."
+          }
+        >
+          <p>{content.clinical_correlation_summary.text}</p>
+          {content.clinical_correlation_summary.excluded_modality_types.length > 0 && (
+            <p style={{ color: "var(--color-text-muted)", fontSize: 14, margin: 0 }}>
+              Modalidades desconsideradas por falta de dados clínicos relevantes:{" "}
+              {content.clinical_correlation_summary.excluded_modality_types
+                .map((modalityType) => modalityLabel(modalityType))
+                .join(", ")}
+              .
+            </p>
+          )}
         </Section>
       )}
 
