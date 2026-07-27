@@ -15,35 +15,69 @@ e uma observacao derivada de um metodo determinístico sobre o texto,
 nunca uma classificacao de risco (o motor de regras, `app.rules_engine`,
 continua sendo a unica fonte de risco).
 
+Antes de rodar a analise de sentimento (Azure AI Language), o processador
+valida a relevancia clinica do texto via LLM. Se o texto nao tiver
+relacao com contexto clinico (ex.: receita culinaria, texto generico),
+a analise de sentimento e PULADA - evitando custos desnecessarios com
+servicos de nuvem e achados sem significado clinico.
+
 Quando a feature flag `sentiment_analysis_enabled` esta ligada (tela
-`/admin/feature-flags`), roda tambem Azure AI Language `SentimentAnalysis`
-(`app.integrations.sentiment_analysis`) sobre o mesmo texto - sempre
+`/admin/feature-flags`), roda Azure AI Language `SentimentAnalysis`
+(`app.integrations.sentiment_analysis`) sobre o texto - sempre
 CONTEXTUAL (nunca determina risco clinico por si so), gravado como achado
-`MODEL_OBSERVATION` proprio. Como `app.risk_consolidation.service.
-consolidate_analysis_risk` so envia ao LLM achados `nature=ORIGINAL_DATA`,
-o sentimento nunca alcanca o prompt de consolidacao de risco - fica
-disponivel apenas no laudo, como as demais observacoes derivadas de
-modelo.
+`MODEL_OBSERVATION` proprio.
 """
 
 from __future__ import annotations
 
+import logging
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.clinical_nlp.text_analysis import analyze_clinical_text
 from app.core.enums import (
     FindingNature,
     ModalityQualityState,
     ModalityType,
     SentimentAnalysisStatus,
 )
+from app.integrations.llm import get_llm_adapter
+from app.integrations.llm.base import LlmTextRelevanceCheckRequest
 from app.integrations.sentiment_analysis import get_sentiment_analysis_adapter
 from app.integrations.sentiment_analysis.base import SentimentAnalysisRequest
 from app.media.models import Analysis
 from app.orchestrator.models import AnalysisModalityState
 from app.processors.base import record_finding
 from app.processors.quality import assess_text_quality
+
+_logger = logging.getLogger(__name__)
+
+# Limiar minimo de relevancia clinica (0-100) para rodar a analise de
+# sentimento. Abaixo disso, o texto e considerado irrelevante para o
+# contexto clinico e a analise de sentimento e pulada.
+_MIN_CLINICAL_RELEVANCE_PERCENT = 30
+
+
+def _extract_terms_via_llm(db: Session, text: str) -> list[dict]:
+    """Extrai termos clínicos via LLM (dinâmico, sem lista fixa).
+    Fallback para NegEx local se o LLM falhar."""
+    try:
+        adapter = get_llm_adapter(db)
+        terms = adapter.extract_clinical_terms(text)
+        return terms if terms else []
+    except Exception:  # noqa: BLE001
+        _logger.warning("LLM extraction failed, falling back to NegEx/ConText")
+        from app.clinical_nlp.text_analysis import analyze_clinical_text
+        return [
+            {
+                "term": m.term,
+                "negation": m.negation.value,
+                "temporality": m.temporality.value,
+                "certainty": m.certainty.value,
+                "experiencer": m.experiencer.value,
+            }
+            for m in analyze_clinical_text(text)
+        ]
 
 
 class TextContentMissingError(Exception):
@@ -128,6 +162,49 @@ def process_text_modality(db: Session, modality_state: AnalysisModalityState) ->
     )
     db.add(finding)
 
+    # Pré-validação de relevância clínica via LLM: antes de rodar análise
+    # de sentimento (Azure, custo por chamada) e extração de termos,
+    # verifica se o texto tem contexto clínico mínimo. Se não tiver (ex.:
+    # receita culinária, texto aleatório), pula o processamento pesado e
+    # registra o motivo explicitamente.
+    text_is_clinically_relevant = True
+    relevance_percent = 100
+    relevance_reason = ""
+    try:
+        adapter = get_llm_adapter(db)
+        relevance_result = adapter.check_text_clinical_relevance(
+            LlmTextRelevanceCheckRequest(text=analysis.additional_text)
+        )
+        text_is_clinically_relevant = relevance_result.is_clinically_relevant
+        relevance_percent = relevance_result.relevance_percent
+        relevance_reason = relevance_result.reason
+    except Exception:  # noqa: BLE001
+        # Se a validação falhar, assume relevante (não bloqueia o fluxo)
+        _logger.warning("Falha na validacao de relevancia clinica do texto - assumindo relevante")
+
+    if not text_is_clinically_relevant or relevance_percent < _MIN_CLINICAL_RELEVANCE_PERCENT:
+        # Texto sem relevância clínica — registra o achado e pula
+        # sentimento/extração de termos
+        irrelevant_finding = record_finding(
+            modality_state=modality_state,
+            modality_type=ModalityType.TEXT,
+            quality_state=ModalityQualityState.ADEQUATE,
+            quality_metrics={
+                "clinical_relevance": "NOT_RELEVANT",
+                "relevance_percent": relevance_percent,
+                "reason": relevance_reason,
+            },
+            quality_factors=["conteudo_sem_relevancia_clinica"],
+            summary=(
+                f"Texto avaliado com {relevance_percent}% de relevância clínica. "
+                f"{relevance_reason} A análise de sentimento e a extração de termos "
+                "foram dispensadas por falta de contexto clínico."
+            ),
+            nature=FindingNature.MODEL_OBSERVATION,
+        )
+        db.add(irrelevant_finding)
+        return
+
     if assessment.state not in (ModalityQualityState.INSUFFICIENT, ModalityQualityState.INVALID):
         _run_sentiment_analysis(
             db,
@@ -136,27 +213,26 @@ def process_text_modality(db: Session, modality_state: AnalysisModalityState) ->
             quality_state=assessment.state,
         )
 
-    for mention in analyze_clinical_text(analysis.additional_text):
+    for mention in _extract_terms_via_llm(db, analysis.additional_text):
         observation = record_finding(
             modality_state=modality_state,
             modality_type=ModalityType.TEXT,
             quality_state=ModalityQualityState.ADEQUATE,
             quality_metrics={
-                "term": mention.term,
-                "negation": mention.negation.value,
-                "certainty": mention.certainty.value,
-                "temporality": mention.temporality.value,
-                "experiencer": mention.experiencer.value,
-                "span": {"start": mention.start, "end": mention.end},
-                "extraction_method": "rule_based_negex_context_v1",
+                "term": mention["term"],
+                "negation": mention.get("negation", "AFFIRMED"),
+                "certainty": mention.get("certainty", "CONFIRMED"),
+                "temporality": mention.get("temporality", "CURRENT"),
+                "experiencer": mention.get("experiencer", "PATIENT"),
+                "extraction_method": "llm_gpt4o_extraction_v1",
             },
             quality_factors=[],
             summary=(
-                f"Termo clinico candidato '{mention.term}' "
-                f"({mention.negation.value.lower()}, {mention.temporality.value.lower()}, "
-                f"{mention.certainty.value.lower()}, "
-                f"experienciador={mention.experiencer.value.lower()}) "
-                f'na frase: "{mention.sentence}".'
+                f"Termo clinico candidato '{mention['term']}' "
+                f"({mention.get('negation', 'AFFIRMED').lower()}, "
+                f"{mention.get('temporality', 'CURRENT').lower()}, "
+                f"{mention.get('certainty', 'CONFIRMED').lower()}, "
+                f"experienciador={mention.get('experiencer', 'PATIENT').lower()})."
             ),
             nature=FindingNature.MODEL_OBSERVATION,
         )

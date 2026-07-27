@@ -22,6 +22,8 @@ dependencies = [
     "cachetools>=5.5.0",
     "slowapi>=0.1.9",
     "httpx>=0.27.2",
+    "pydicom>=3.0.2",
+    "azure-identity>=1.25.3",
 ]
 
 [dependency-groups]
@@ -58,6 +60,13 @@ select = ["E", "F", "I", "UP", "B"]
 # `timezone.utc` (equivalente, disponivel desde o 3.2) pelo mesmo motivo de
 # compatibilidade local acima.
 ignore = ["B008", "UP042", "UP017"]
+
+[tool.ruff.lint.per-file-ignores]
+"app/integrations/llm/openai_adapter.py" = ["E501"]
+"app/reports/pdf.py" = ["E501"]
+"app/processors/video.py" = ["E501"]
+"app/processors/image.py" = ["E501"]
+"app/integrations/dicom/client.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.11"

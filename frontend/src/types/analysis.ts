@@ -173,6 +173,19 @@ export interface ReportContent {
     findings_considered: number;
   } | null;
   calculated_risk: ReportRiskConsolidation;
+  /** Risco assistido por IA: avaliação dos achados multimodais pelo LLM.
+   * Complementar ao risco determinístico. Quando ambos existem, o MAIS
+   * ALTO prevalece na exibição. Sempre marcado como sugestão, nunca
+   * classificação definitiva. `null` quando não há achados multimodais
+   * clinicamente relevantes ou quando o LLM falhou/está desligado. */
+  assisted_risk?: {
+    risk_level: number;
+    classification_label: string;
+    justification: string;
+    uncertainty_note: string;
+    provider: string;
+    model: string;
+  } | null;
   deterministic_findings: Array<{
     code: string;
     outcome: string;

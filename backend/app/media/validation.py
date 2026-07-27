@@ -28,9 +28,11 @@ from app.core.enums import ModalityType
 # `ModalityType.TEXT` nao passa por upload de midia - o texto adicional e
 # um campo direto da analise (ver app/media/service.py::create_analysis).
 ALLOWED_MIME_TYPES: dict[ModalityType, frozenset[str]] = {
-    ModalityType.AUDIO: frozenset({"audio/wav", "audio/x-wav", "audio/mpeg", "audio/mp4"}),
+    ModalityType.AUDIO: frozenset(
+        {"audio/wav", "audio/x-wav", "audio/mpeg", "audio/mp3", "audio/mp4"}
+    ),
     ModalityType.VIDEO: frozenset({"video/mp4", "video/quicktime"}),
-    ModalityType.IMAGE: frozenset({"image/jpeg", "image/png"}),
+    ModalityType.IMAGE: frozenset({"image/jpeg", "image/png", "application/dicom"}),
 }
 
 # Tamanho maximo por modalidade, em bytes.
@@ -78,8 +80,11 @@ def validate_declared_metadata(
 # arquivo, apenas uma primeira barreira.
 _SIGNATURES: tuple[tuple[bytes, str], ...] = (
     (b"RIFF", "audio/wav"),  # WAVE (RIFF....WAVEfmt); refinado abaixo
-    (b"ID3", "audio/mpeg"),
-    (b"\xff\xfb", "audio/mpeg"),
+    (b"ID3", "audio/mpeg"),  # MP3 com tag ID3v2
+    (b"\xff\xfb", "audio/mpeg"),  # MPEG1 Layer3 sem ID3
+    (b"\xff\xf3", "audio/mpeg"),  # MPEG2 Layer3 sem ID3
+    (b"\xff\xf2", "audio/mpeg"),  # MPEG2.5 Layer3 sem ID3
+    (b"\xff\xfa", "audio/mpeg"),  # MPEG1 Layer3 (CRC) sem ID3
     (b"\xff\xd8\xff", "image/jpeg"),
     (b"\x89PNG\r\n\x1a\n", "image/png"),
 )
@@ -95,6 +100,9 @@ def detect_mime_type_from_signature(content_prefix: bytes) -> str | None:
         # certeza; tratamos como valido para os MIMEs de container
         # aceitos e deixamos a comparacao final decidir.
         return "container/isobmff"
+    # DICOM: magic "DICM" no offset 128 (preambulo de 128 bytes + marker)
+    if len(content_prefix) > 132 and content_prefix[128:132] == b"DICM":
+        return "application/dicom"
     for signature, mime_type in _SIGNATURES:
         if content_prefix.startswith(signature):
             return mime_type
@@ -109,6 +117,10 @@ def signature_matches_declared_mime(detected: str | None, declared: str) -> bool
         return False
     if detected == "container/isobmff":
         return declared in _CONTAINER_COMPATIBLE_MIME_TYPES
+    # audio/mp3 e audio/mpeg sao o mesmo formato (MPEG Layer 3) - browsers
+    # e sistemas operacionais usam os dois nomes intercambiavelmente.
+    if detected == "audio/mpeg" and declared in ("audio/mpeg", "audio/mp3"):
+        return True
     return detected == declared
 
 

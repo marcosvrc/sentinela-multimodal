@@ -112,6 +112,12 @@ class FeatureFlags(Base):
         Boolean, nullable=False, default=False
     )
 
+    # Aceitar uploads DICOM (application/dicom) e armazenar no Azure
+    # Health Data Services DICOM Service. Desligado por padrão.
+    dicom_service_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

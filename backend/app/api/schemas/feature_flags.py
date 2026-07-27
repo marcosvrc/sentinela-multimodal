@@ -55,6 +55,7 @@ class FeatureFlagsRead(BaseModel):
     image_recognition_enabled: bool
     sentiment_analysis_enabled: bool
     auto_clinical_support_enabled: bool
+    dicom_service_enabled: bool
     updated_at: datetime
     updated_by: str | None
 
@@ -87,3 +88,4 @@ class FeatureFlagsUpdate(BaseModel):
     image_recognition_enabled: bool | None = None
     sentiment_analysis_enabled: bool | None = None
     auto_clinical_support_enabled: bool | None = None
+    dicom_service_enabled: bool | None = None

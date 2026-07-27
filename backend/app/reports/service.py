@@ -151,6 +151,18 @@ def _build_content(
         protocol_action_description=_protocol_conduct_description(db, risk),
         review=review,
         clinical_support_summary=clinical_support_summary,
+        assisted_risk=(
+            {
+                "risk_level": risk.assisted_risk_level,
+                "classification_label": risk.assisted_risk_label,
+                "justification": risk.assisted_risk_justification,
+                "uncertainty_note": risk.assisted_risk_uncertainty,
+                "provider": risk.assisted_risk_provider,
+                "model": risk.assisted_risk_model,
+            }
+            if risk and risk.assisted_risk_level is not None
+            else None
+        ),
     )
 
 

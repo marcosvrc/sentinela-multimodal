@@ -316,6 +316,7 @@ def build_report_content(
     protocol_action_description: str | None,
     review: ReportProfessionalReview,
     clinical_support_summary: ReportClinicalSupportSummary | None = None,
+    assisted_risk: dict | None = None,
 ) -> dict:
     inconsistencies: list[str] = []
     if risk is None or risk.outcome == "INCONCLUSIVE":
@@ -386,6 +387,10 @@ def build_report_content(
             "inconclusive_reason": risk.inconclusive_reason if risk else None,
             "inconclusive_detail": risk.inconclusive_detail if risk else None,
         },
+        # Risco assistido por IA: avaliacao dos achados multimodais pelo
+        # LLM. Complementar ao risco deterministico. Quando ambos existem,
+        # o MAIS ALTO prevalece na exibicao. Sempre marcado como sugestao.
+        "assisted_risk": assisted_risk,
         "deterministic_findings": risk.code_evaluations if risk else [],
         "model_observations": [
             {

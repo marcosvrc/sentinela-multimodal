@@ -41,6 +41,18 @@ class LlmSummaryRequest:
     inconclusive_reason: str | None
     matched_rule_codes: tuple[str, ...] = field(default_factory=tuple)
     modality_summaries: tuple[LlmModalitySummaryInput, ...] = field(default_factory=tuple)
+    # Achados multimodais clinicamente relevantes (termos clínicos,
+    # hipóteses, observações de modelo) - enriquecem o resumo explicativo
+    # com contexto do que foi encontrado nas modalidades.
+    clinical_findings: tuple[LlmModalitySummaryInput, ...] = field(default_factory=tuple)
+    # Dados clínicos estruturados informados na análise (ex.: spo2=87,
+    # systolic_mmhg=174) para que o LLM explique OS VALORES que geraram
+    # o risco, não apenas o rótulo do resultado.
+    structured_inputs: dict[str, object] = field(default_factory=dict)
+    # Risco assistido por IA (quando disponível) — contexto para que o
+    # resumo explicativo mencione divergências entre determinístico e IA.
+    assisted_risk_level: int | None = None
+    assisted_risk_label: str | None = None
 
 
 @dataclass(frozen=True)
@@ -162,6 +174,54 @@ class LlmAnalysisClinicalSupportRequest:
     findings: tuple[LlmAnalysisModalityFindingInput, ...] = field(default_factory=tuple)
 
 
+@dataclass(frozen=True)
+class LlmTextRelevanceCheckRequest:
+    """Texto a ser avaliado quanto a relevancia clinica ANTES de processar."""
+
+    text: str
+
+
+@dataclass(frozen=True)
+class LlmTextRelevanceCheckResult:
+    """Resultado da avaliacao de relevancia clinica do texto."""
+
+    is_clinically_relevant: bool
+    relevance_percent: int  # 0-100
+    reason: str
+    provider: str
+    model: str
+
+
+@dataclass(frozen=True)
+class LlmModalityRiskAssessmentRequest:
+    """Allowlist de campos para a avaliacao assistida de risco a partir dos
+    achados multimodais. Chamada quando ha achados clinicamente relevantes
+    mas o motor de regras deterministico nao pode classificar (falta de
+    dados clinicos estruturados, ou como complemento quando os dois
+    existem). O LLM deve retornar um nivel de risco (1-6) com justificativa
+    - que sera apresentado ao profissional como SUGESTAO, nunca como
+    classificacao definitiva."""
+
+    findings: tuple[LlmAnalysisModalityFindingInput, ...] = field(default_factory=tuple)
+    deterministic_risk_outcome: str | None = None  # "MATCHED"|"INCONCLUSIVE"|None
+    deterministic_risk_level: int | None = None
+
+
+@dataclass(frozen=True)
+class LlmModalityRiskAssessmentResult:
+    """Resultado da avaliacao assistida de risco por IA."""
+
+    risk_level: int  # 1-6
+    classification_label: str
+    justification: str
+    uncertainty_note: str
+    provider: str
+    model: str
+    prompt_version: str
+    input_hash: str
+    output_hash: str
+
+
 class LlmAdapter(Protocol):
     """Implementado por `LocalTemplateLlmAdapter` (dev/testes) e
     `OpenAiLlmAdapter` (real)."""
@@ -175,3 +235,13 @@ class LlmAdapter(Protocol):
     def generate_analysis_clinical_support_summary(
         self, request: LlmAnalysisClinicalSupportRequest
     ) -> LlmClinicalSupportResult: ...
+
+    def assess_modality_risk(
+        self, request: LlmModalityRiskAssessmentRequest
+    ) -> LlmModalityRiskAssessmentResult: ...
+
+    def check_text_clinical_relevance(
+        self, request: LlmTextRelevanceCheckRequest
+    ) -> LlmTextRelevanceCheckResult: ...
+
+    def extract_clinical_terms(self, text: str) -> list[dict]: ...

@@ -97,6 +97,12 @@ class Settings(BaseSettings):
     azure_language_key: str | None = None
     azure_language_endpoint: str | None = None
 
+    # --- Azure Health Data Services (DICOM) ---
+    azure_dicom_endpoint: str | None = None
+    azure_dicom_tenant_id: str | None = None
+    azure_dicom_client_id: str | None = None
+    azure_dicom_client_secret: str | None = None
+
     # --- Visao computacional de video ---
     # LOCAL (sem motor de pose/deteccao, retorna UNAVAILABLE honesto) por
     # padrao; OPENPOSE_YOLOV8 e o worker self-hosted (nao um servico

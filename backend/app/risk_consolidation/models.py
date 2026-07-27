@@ -51,6 +51,18 @@ class RiskConsolidation(Base):
     llm_input_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     llm_output_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
+    # Risco assistido por IA (avaliacao dos achados multimodais pelo LLM).
+    # Complementar ao risco deterministico: quando ambos existem, o MAIS
+    # ALTO prevalece na exibicao; quando so o assistido existe (sem dados
+    # clinicos estruturados), e a unica classificacao disponivel - sempre
+    # marcada como sugestao, nunca definitiva.
+    assisted_risk_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    assisted_risk_label: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    assisted_risk_justification: Mapped[str | None] = mapped_column(Text, nullable=True)
+    assisted_risk_uncertainty: Mapped[str | None] = mapped_column(Text, nullable=True)
+    assisted_risk_provider: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    assisted_risk_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

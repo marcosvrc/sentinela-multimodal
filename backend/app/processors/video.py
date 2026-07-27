@@ -4,21 +4,24 @@ Duracao real e calculada para MP4/MOV (`parse_isobmff_duration_seconds`,
 ISO BMFF - `video/mp4` e `video/quicktime` sao os dois tipos aceitos por
 `app.media.validation.ALLOWED_MIME_TYPES[VIDEO]`, ambos ISO BMFF).
 
-Tambem roda a **analise de visao computacional** (`app.integrations.
-vision`): adaptador LOCAL retorna honestamente "indisponivel" (sem motor
-de pose/deteccao); adaptador OPENPOSE_YOLOV8 (configuravel, worker
-self-hosted escolhido para nao depender de um servico de visao gerenciado
-de terceiros nesse caminho) amostra quadros do video e roda estimativa de
-pose (OpenPose) + deteccao de objetos (YOLOv8) sobre cada um, virando
-achados `MODEL_OBSERVATION`. Quando nenhum quadro amostrado tem uma pessoa
-detectada, gera tambem uma hipotese de possivel ausencia de paciente no
-campo de captura (`ASSISTED_HYPOTHESIS`, nunca diagnostico - inferencias
-como dor, confusao, sangramento ou erro procedimental nao podem ser
-tratadas como diagnostico apenas com base no video).
+Roda a **analise de visao computacional** (`app.integrations.vision`) quando
+VISION_PROVIDER=OPENPOSE_YOLOV8 esta configurado. Quando LOCAL (padrao),
+retorna "indisponivel" honestamente.
 
+Adicionalmente, roda a **analise contextual via GPT-4 Vision** (sempre que
+OPENAI_API_KEY esta configurada): extrai quadros do video via ffmpeg e
+envia ao GPT-4o para descricao clinica contextualizada (expressao facial,
+postura, sinais de dor/desconforto, movimentacao). Esta analise funciona
+independentemente do VISION_PROVIDER - nao precisa de OpenPose nem YOLOv8.
 """
 
 from __future__ import annotations
+
+import base64
+import logging
+import subprocess
+import tempfile
+from pathlib import Path
 
 from sqlalchemy.orm import Session
 
@@ -35,8 +38,58 @@ from app.processors.quality import (
 )
 from app.storage import get_storage_adapter
 
+_logger = logging.getLogger(__name__)
+
 _ISOBMFF_MIME_TYPES = ("video/mp4", "video/quicktime")
 _MEDIA_FORMAT_BY_MIME = {"video/mp4": "mp4", "video/quicktime": "mov"}
+
+# Tradução dos rótulos COCO (YOLOv8) para português
+_YOLO_LABEL_PT: dict[str, str] = {
+    "person": "pessoa",
+    "bicycle": "bicicleta",
+    "car": "carro",
+    "motorcycle": "motocicleta",
+    "bus": "ônibus",
+    "truck": "caminhão",
+    "traffic light": "semáforo",
+    "bench": "banco",
+    "bird": "pássaro",
+    "cat": "gato",
+    "dog": "cachorro",
+    "horse": "cavalo",
+    "backpack": "mochila",
+    "umbrella": "guarda-chuva",
+    "handbag": "bolsa",
+    "suitcase": "mala",
+    "bottle": "garrafa",
+    "cup": "copo",
+    "fork": "garfo",
+    "knife": "faca",
+    "spoon": "colher",
+    "bowl": "tigela",
+    "chair": "cadeira",
+    "couch": "sofá",
+    "bed": "cama/leito",
+    "dining table": "mesa",
+    "tv": "monitor/tela",
+    "laptop": "notebook",
+    "mouse": "mouse",
+    "keyboard": "teclado",
+    "cell phone": "celular",
+    "microwave": "micro-ondas",
+    "oven": "forno",
+    "refrigerator": "geladeira",
+    "book": "livro",
+    "clock": "relógio",
+    "scissors": "tesoura",
+    "toothbrush": "escova de dentes",
+    "sink": "pia",
+    "toilet": "vaso sanitário",
+}
+
+
+def _translate_yolo_label(label: str) -> str:
+    return _YOLO_LABEL_PT.get(label.lower(), label)
 
 
 def _run_vision_analysis(
@@ -89,7 +142,7 @@ def _record_vision_summary_finding(
             total_persons = sum(p.person_count for p in result.pose_findings)
             summary_parts.append(f"{total_persons} deteccao(oes) de pessoa (pose)")
         if result.detection_enabled:
-            distinct_labels = sorted({d.label for d in result.detection_findings})
+            distinct_labels = sorted({_translate_yolo_label(d.label) for d in result.detection_findings})
             summary_parts.append(f"objetos identificados: {', '.join(distinct_labels) or 'nenhum'}")
         summary = ", ".join(summary_parts) + "."
 
@@ -115,7 +168,7 @@ def _record_vision_summary_finding(
             "detection_findings": [
                 {
                     "frame_index": d.frame_index,
-                    "label": d.label,
+                    "label": _translate_yolo_label(d.label),
                     "confidence": d.confidence,
                     "model_version": d.model_version,
                 }
@@ -216,3 +269,171 @@ def process_video_modality(db: Session, modality_state: AnalysisModalityState) -
             media_format=media_format,
             quality_state=assessment.state,
         )
+        # GPT-4 Vision para análise contextual clínica do vídeo
+        _run_video_gpt_vision(
+            db,
+            modality_state,
+            content=content,
+            media_format=media_format or "mp4",
+            quality_state=assessment.state,
+        )
+
+
+def _run_video_gpt_vision(
+    db: Session,
+    modality_state: AnalysisModalityState,
+    *,
+    content: bytes,
+    media_format: str,
+    quality_state: ModalityQualityState,
+) -> None:
+    """Extrai quadros do vídeo via ffmpeg e envia ao GPT-4o para análise
+    contextual clínica detalhada (sequência temporal de eventos)."""
+    try:
+        from openai import OpenAI
+
+        from app.core.config import get_settings
+
+        settings = get_settings()
+        if not settings.openai_api_key:
+            return
+
+        # Extrai 12 quadros equidistantes para capturar a sequência temporal
+        frames = _extract_frames_from_video(content, media_format, num_frames=12)
+        if not frames:
+            return
+
+        client = OpenAI(api_key=settings.openai_api_key)
+        # Usa gpt-4o (não mini) para melhor análise de vídeo
+        model = "gpt-4o"
+
+        # Monta mensagem com os frames em sequência temporal
+        image_contents: list[dict] = []
+        for _i, frame_bytes in enumerate(frames):
+            b64 = base64.b64encode(frame_bytes).decode("utf-8")
+            image_contents.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{b64}", "detail": "high"},
+            })
+        image_contents.append({
+            "type": "text",
+            "text": (
+                f"Estes são {len(frames)} quadros extraídos sequencialmente de um vídeo "
+                "clínico (do início ao fim). Analise a SEQUÊNCIA TEMPORAL de eventos."
+            ),
+        })
+
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Voce e um assistente de apoio clinico especializado em analise de "
+                        "video. Os quadros fornecidos estao em ORDEM CRONOLOGICA (do inicio "
+                        "ao fim do video). Analise a SEQUENCIA TEMPORAL e descreva:\n\n"
+                        "1. RESUMO DA CENA: o que esta acontecendo no video.\n"
+                        "2. SEQUENCIA DE EVENTOS: descreva frame a frame o que muda "
+                        "(postura, movimento, posicao, expressao). Identifique QUANDO "
+                        "ocorrem mudancas significativas.\n"
+                        "3. EVENTOS CLINICOS DETECTADOS: liste objetivamente o que observou "
+                        "(quedas, perda de equilibrio, uso de dispositivos auxiliares, "
+                        "imobilidade, sinais de dor/desconforto, presenca/ausencia de "
+                        "auxilio, postura anormal).\n"
+                        "4. CLASSIFICACAO DE RISCO: sugira um nivel (Baixo/Moderado/Alto/"
+                        "Critico) baseado nos eventos observados, com justificativa.\n\n"
+                        "Seja detalhado e objetivo. Responda em portugues do Brasil."
+                    ),
+                },
+                {"role": "user", "content": image_contents},
+            ],
+            max_tokens=1500,
+            store=False,
+        )
+
+        description = response.choices[0].message.content or ""
+        if not description.strip():
+            return
+
+        is_not_relevant = any(
+            p in description.lower()
+            for p in ["não há contexto clínico", "nao ha contexto clinico", "sem relevância clínica", "nao tem conteudo clinico"]
+        )
+
+        finding = record_finding(
+            modality_state=modality_state,
+            modality_type=ModalityType.VIDEO,
+            quality_state=quality_state,
+            quality_metrics={
+                "provider": "openai",
+                "model": model,
+                "analysis_type": "vision_contextual_video",
+                "frames_analyzed": len(frames),
+                "clinical_relevance": "NOT_RELEVANT" if is_not_relevant else "RELEVANT",
+            },
+            quality_factors=[],
+            summary=f"Análise contextual de vídeo (GPT-4 Vision, {len(frames)} quadros): {description.strip()}",
+            nature=FindingNature.MODEL_OBSERVATION,
+        )
+        db.add(finding)
+
+    except Exception as exc:  # noqa: BLE001
+        _logger.warning("GPT-4 Vision video analysis failed: %s", exc)
+
+
+def _extract_frames_from_video(content: bytes, media_format: str, num_frames: int = 12) -> list[bytes]:
+    """Extrai N quadros equidistantes do vídeo via ffmpeg. Retorna lista de bytes JPEG."""
+    try:
+        ext = f".{media_format}"
+        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as src:
+            src.write(content)
+            src_path = Path(src.name)
+
+        out_dir = Path(tempfile.mkdtemp())
+
+        # Primeiro: obter duração para calcular intervalo
+        subprocess.run(
+            ["ffmpeg", "-i", str(src_path), "-f", "null", "-"],
+            capture_output=True, timeout=15,
+        )
+        # Extrai frames usando fps filter (mais confiável)
+        # Se o vídeo tem 10s e queremos 12 frames: fps=12/10=1.2
+        result = subprocess.run(
+            [
+                "ffmpeg", "-y", "-i", str(src_path),
+                "-vf", f"fps={num_frames}/10,scale=512:-1",
+                "-frames:v", str(num_frames),
+                "-q:v", "3",
+                str(out_dir / "frame_%03d.jpg"),
+            ],
+            capture_output=True, timeout=60,
+        )
+        src_path.unlink(missing_ok=True)
+
+        if result.returncode != 0:
+            # Fallback: extrair o que conseguir com filtro simples
+            with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as src2:
+                src2.write(content)
+                src2_path = Path(src2.name)
+            subprocess.run(
+                [
+                    "ffmpeg", "-y", "-i", str(src2_path),
+                    "-vf", "fps=1",
+                    "-frames:v", str(num_frames),
+                    "-q:v", "3",
+                    str(out_dir / "frame_%03d.jpg"),
+                ],
+                capture_output=True, timeout=60,
+            )
+            src2_path.unlink(missing_ok=True)
+
+        frames: list[bytes] = []
+        for jpg_file in sorted(out_dir.glob("frame_*.jpg")):
+            frames.append(jpg_file.read_bytes())
+            jpg_file.unlink()
+        out_dir.rmdir()
+        return frames
+
+    except Exception as exc:  # noqa: BLE001
+        _logger.warning("Frame extraction failed: %s", exc)
+        return []

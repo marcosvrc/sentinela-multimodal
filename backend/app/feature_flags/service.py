@@ -41,6 +41,7 @@ _EDITABLE_FIELDS = (
     "image_recognition_enabled",
     "sentiment_analysis_enabled",
     "auto_clinical_support_enabled",
+    "dicom_service_enabled",
 )
 
 
