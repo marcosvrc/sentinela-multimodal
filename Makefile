@@ -1,143 +1,384 @@
-# Interface unica de comandos do SentinelHealth.
-# Usada tanto localmente quanto pelo CI/CD (ver ESCOPO_PROJETO.md secao 12.1.3).
-# A logica das verificacoes vive aqui, nao apenas no YAML do GitHub Actions.
-
-.PHONY: setup dev stop format lint typecheck test test-integration load-test build check \
+.PHONY: help setup dev stop format lint typecheck test test-integration load-test build check \
         migrate migration rules-validate rules-seed compose-up compose-down \
-        codegen export-openapi seed-dev-data seed-care-units seed-employees seed-patients worker \
-        test-db-create test-db-migrate
+        codegen export-openapi seed-dev-data seed-care-units seed-employees seed-patients \
+        worker worker-loop up logs health \
+        test-db-create test-db-migrate setup-azure setup-yolo check-env
 
-BACKEND := backend
+# =============================================================================
+# Variáveis
+# =============================================================================
+
+BACKEND  := backend
 FRONTEND := frontend
 
-# Banco de dados usado pelos testes (backend/tests) - isolado do banco de
-# desenvolvimento (DATABASE_URL do .env) para que dados criados por teste
-# nunca apareçam nas telas da aplicação em execução localmente. Mesmo
-# Postgres do compose, banco diferente (padrão: sentinelhealth_test).
-# Sobrescreva com `make test TEST_DATABASE_URL=postgresql+psycopg://...`
-# se preferir outro banco/host.
 TEST_DATABASE_URL ?= postgresql+psycopg://sentinel:sentinel@localhost:5432/sentinelhealth_test
 
-## Instala dependencias de backend e frontend
+# Cores
+GREEN  = \033[0;32m
+YELLOW = \033[0;33m
+RED    = \033[0;31m
+BLUE   = \033[0;36m
+NC     = \033[0m
+
+# =============================================================================
+# AJUDA
+# =============================================================================
+
+help:
+	@echo "$(BLUE)═══════════════════════════════════════════════════════════════════$(NC)"
+	@echo "$(BLUE)  SentinelHealth — Apoio à Decisão Clínica Multimodal$(NC)"
+	@echo "$(BLUE)  Tech Challenge Fase 4 · PosTech 2026$(NC)"
+	@echo "$(BLUE)═══════════════════════════════════════════════════════════════════$(NC)"
+	@echo ""
+	@echo "  $(BLUE)▸ SETUP$(NC)"
+	@echo "    $(GREEN)make setup$(NC)            - Instala dependências (backend + frontend)"
+	@echo "    $(GREEN)make compose-up$(NC)       - Sobe o PostgreSQL local via Docker Compose"
+	@echo "    $(GREEN)make migrate$(NC)          - Aplica migrations pendentes no banco"
+	@echo ""
+	@echo "  $(BLUE)▸ EXECUÇÃO$(NC)"
+	@echo "    $(GREEN)make dev$(NC)              - Sobe Postgres e orienta subir API/frontend"
+	@echo "    $(GREEN)make worker$(NC)           - Roda uma iteração do worker do orquestrador"
+	@echo "    $(GREEN)make worker-loop$(NC)      - Roda o worker em loop contínuo"
+	@echo "    $(GREEN)make up$(NC)               - Sobe tudo via Docker Compose (Postgres+API+worker+frontend)"
+	@echo "    $(GREEN)make stop$(NC)             - Derruba os containers do Compose"
+	@echo "    $(GREEN)make logs$(NC)             - Exibe logs dos containers em tempo real"
+	@echo "    $(GREEN)make health$(NC)           - Verifica se a API está respondendo"
+	@echo ""
+	@echo "  $(BLUE)▸ QUALIDADE$(NC)"
+	@echo "    $(GREEN)make format$(NC)           - Formata backend (ruff) e frontend (prettier)"
+	@echo "    $(GREEN)make lint$(NC)             - Lint backend (ruff) e frontend (eslint)"
+	@echo "    $(GREEN)make typecheck$(NC)        - Checagem de tipos (mypy + tsc)"
+	@echo "    $(GREEN)make check$(NC)            - Validação completa (lint+typecheck+test+regras)"
+	@echo ""
+	@echo "  $(BLUE)▸ TESTES$(NC)"
+	@echo "    $(GREEN)make test$(NC)             - Testes unitários (backend + frontend)"
+	@echo "    $(GREEN)make test-integration$(NC) - Testes de integração (requer Postgres)"
+	@echo "    $(GREEN)make test-db-create$(NC)   - Cria banco de teste (idempotente)"
+	@echo "    $(GREEN)make test-db-migrate$(NC)  - Aplica migrations no banco de teste"
+	@echo ""
+	@echo "  $(BLUE)▸ DADOS$(NC)"
+	@echo "    $(GREEN)make rules-validate$(NC)   - Valida regras clínicas (YAML vs schema)"
+	@echo "    $(GREEN)make rules-seed$(NC)       - Carrega regras clínicas no banco"
+	@echo "    $(GREEN)make seed-dev-data$(NC)    - Cria instituição e usuários de dev"
+	@echo "    $(GREEN)make seed-care-units$(NC)  - Popula unidades assistenciais"
+	@echo "    $(GREEN)make seed-employees$(NC)   - Popula funcionários fictícios"
+	@echo "    $(GREEN)make seed-patients$(NC)    - Popula pacientes fictícios"
+	@echo ""
+	@echo "  $(BLUE)▸ BUILD & DEPLOY$(NC)"
+	@echo "    $(GREEN)make build$(NC)            - Build das imagens Docker"
+	@echo "    $(GREEN)make codegen$(NC)          - Gera enums TypeScript a partir do Python"
+	@echo "    $(GREEN)make export-openapi$(NC)   - Gera snapshot OpenAPI (docs/contracts)"
+	@echo ""
+	@echo "  $(BLUE)▸ INTEGRAÇÕES$(NC)"
+	@echo "    $(GREEN)make setup-azure$(NC)      - Cria recursos Azure (Speech, Language, Vision)"
+	@echo "    $(GREEN)make setup-yolo$(NC)       - Instala YOLOv8 para análise de vídeo"
+	@echo "    $(GREEN)make check-env$(NC)        - Verifica quais integrações estão configuradas"
+	@echo ""
+	@echo "  $(BLUE)▸ BANCO$(NC)"
+	@echo "    $(GREEN)make migration name=\"...\"$(NC)  - Cria nova migration Alembic"
+	@echo "    $(GREEN)make compose-down$(NC)     - Derruba Compose e remove volumes"
+	@echo ""
+	@echo "$(BLUE)═══════════════════════════════════════════════════════════════════$(NC)"
+
+# =============================================================================
+# SETUP
+# =============================================================================
+
 setup:
-	cd $(BACKEND) && uv sync
-	cd $(FRONTEND) && npm install
-	@test -f .env || cp .env.example .env
-	@echo "Setup concluido. Ajuste o .env se necessario e rode 'make compose-up'."
+	@echo "$(BLUE)═══════════════════════════════════════════════════════════════════$(NC)"
+	@echo "$(BLUE)  Setup — SentinelHealth$(NC)"
+	@echo "$(BLUE)═══════════════════════════════════════════════════════════════════$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Instalando dependências do backend (uv sync)...$(NC)"
+	@cd $(BACKEND) && uv sync && echo "$(GREEN)Backend OK$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Instalando dependências do frontend (npm install)...$(NC)"
+	@cd $(FRONTEND) && npm install && echo "$(GREEN)Frontend OK$(NC)"
+	@echo ""
+	@test -f .env || (cp .env.example .env && echo "$(YELLOW).env criado a partir de .env.example$(NC)")
+	@echo ""
+	@echo "$(GREEN)═══════════════════════════════════════════════════════════════════$(NC)"
+	@echo "$(GREEN)  Setup concluído!$(NC)"
+	@echo "$(GREEN)═══════════════════════════════════════════════════════════════════$(NC)"
+	@echo ""
+	@echo "  Próximos passos:"
+	@echo "  $(GREEN)make compose-up$(NC)       - Sobe o PostgreSQL"
+	@echo "  $(GREEN)make migrate$(NC)          - Aplica as migrations"
+	@echo "  $(GREEN)make rules-seed$(NC)       - Carrega regras clínicas"
+	@echo "  $(GREEN)make seed-dev-data$(NC)    - Cria usuários de desenvolvimento"
+	@echo "  $(GREEN)make dev$(NC)              - Inicia o sistema"
+	@echo ""
 
-## Sobe Postgres via Compose e inicia API + frontend em modo desenvolvimento
+# =============================================================================
+# EXECUÇÃO
+# =============================================================================
+
 dev: compose-up
-	@echo "Postgres disponivel em localhost:5432."
-	@echo "Em terminais separados, rode:"
-	@echo "  cd backend  && uv run uvicorn app.main:app --reload"
-	@echo "  cd frontend && npm run dev"
+	@echo "$(GREEN)Postgres disponível em localhost:5432.$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Em terminais separados, rode:$(NC)"
+	@echo "  $(GREEN)cd backend  && uv run uvicorn app.main:app --reload$(NC)"
+	@echo "  $(GREEN)cd backend  && PYTHONPATH=. uv run python -m scripts.run_orchestrator_worker$(NC)"
+	@echo "  $(GREEN)cd frontend && npm run dev$(NC)"
+	@echo ""
+	@echo "$(BLUE)API: http://localhost:8000 · Swagger: http://localhost:8000/docs$(NC)"
+	@echo "$(BLUE)Frontend: http://localhost:5173$(NC)"
 
-## Para os containers do Compose
 stop:
-	docker compose -f compose.yaml down
+	@echo "$(YELLOW)Derrubando containers...$(NC)"
+	@docker compose -f compose.yaml down && echo "$(GREEN)Containers parados$(NC)"
 
-## Formata backend e frontend
+worker:
+	@echo "$(BLUE)Rodando worker do orquestrador (uma iteração)...$(NC)"
+	@cd $(BACKEND) && PYTHONPATH=. uv run python -m scripts.run_orchestrator_worker --once
+
+worker-loop:
+	@echo "$(BLUE)Rodando worker do orquestrador (loop contínuo)...$(NC)"
+	@echo "$(YELLOW)Ctrl+C para parar$(NC)"
+	@cd $(BACKEND) && PYTHONPATH=. uv run python -m scripts.run_orchestrator_worker
+
+up:
+	@echo "$(BLUE)Subindo todos os serviços via Docker Compose...$(NC)"
+	@docker compose -f compose.yaml up -d --build && echo "$(GREEN)Serviços disponíveis$(NC)"
+	@echo ""
+	@echo "  $(GREEN)API:$(NC)       http://localhost:8000"
+	@echo "  $(GREEN)Swagger:$(NC)   http://localhost:8000/docs"
+	@echo "  $(GREEN)Frontend:$(NC)  http://localhost:5173"
+	@echo "  $(GREEN)Postgres:$(NC)  localhost:5432"
+
+logs:
+	@docker compose -f compose.yaml logs -f --tail=50
+
+health:
+	@echo "$(BLUE)Verificando saúde da API...$(NC)"
+	@curl -sf http://localhost:8000/health > /dev/null 2>&1 && \
+		echo "$(GREEN)✓ API respondendo em http://localhost:8000$(NC)" || \
+		echo "$(RED)✗ API não está respondendo (rode 'make dev' ou 'make up' primeiro)$(NC)"
+	@curl -sf http://localhost:5173 > /dev/null 2>&1 && \
+		echo "$(GREEN)✓ Frontend respondendo em http://localhost:5173$(NC)" || \
+		echo "$(YELLOW)○ Frontend não está respondendo$(NC)"
+
+# =============================================================================
+# QUALIDADE
+# =============================================================================
+
 format:
-	cd $(BACKEND) && uv run ruff format .
-	cd $(FRONTEND) && npm run format
+	@echo "$(BLUE)Formatando código...$(NC)"
+	@cd $(BACKEND) && uv run ruff format . && echo "$(GREEN)Backend formatado$(NC)"
+	@cd $(FRONTEND) && npm run format && echo "$(GREEN)Frontend formatado$(NC)"
 
-## Lint backend e frontend
 lint:
-	cd $(BACKEND) && uv run ruff check .
-	cd $(FRONTEND) && npm run lint
+	@echo "$(BLUE)Executando lint...$(NC)"
+	@cd $(BACKEND) && uv run ruff check . && echo "$(GREEN)Backend lint OK$(NC)"
+	@cd $(FRONTEND) && npm run lint && echo "$(GREEN)Frontend lint OK$(NC)"
 
-## Checagem de tipos backend e frontend
 typecheck:
-	cd $(BACKEND) && uv run mypy app
-	cd $(FRONTEND) && npm run typecheck
+	@echo "$(BLUE)Checagem de tipos...$(NC)"
+	@cd $(BACKEND) && uv run mypy app && echo "$(GREEN)Backend types OK$(NC)"
+	@cd $(FRONTEND) && npm run typecheck && echo "$(GREEN)Frontend types OK$(NC)"
 
-## Testes unitarios backend e frontend.
-## Backend usa TEST_DATABASE_URL (banco Postgres separado do de
-## desenvolvimento, ver test-db-create/test-db-migrate) para nunca gravar
-## dados de teste (ex.: clinical_rule_sets com codigo "acs-spo2-<uuid>") no
-## banco usado pela API/frontend em modo dev.
+check: lint typecheck test rules-validate
+	@echo ""
+	@echo "$(GREEN)═══════════════════════════════════════════════════════════════════$(NC)"
+	@echo "$(GREEN)  Todas as validações passaram!$(NC)"
+	@echo "$(GREEN)═══════════════════════════════════════════════════════════════════$(NC)"
+
+# =============================================================================
+# TESTES
+# =============================================================================
+
 test:
-	cd $(BACKEND) && DATABASE_URL="$(TEST_DATABASE_URL)" uv run pytest
-	cd $(FRONTEND) && npm run test
+	@echo "$(BLUE)Rodando testes unitários...$(NC)"
+	@cd $(BACKEND) && DATABASE_URL="$(TEST_DATABASE_URL)" uv run pytest && echo "$(GREEN)Backend tests OK$(NC)"
+	@cd $(FRONTEND) && npm run test && echo "$(GREEN)Frontend tests OK$(NC)"
 
-## Testes de integracao (dependem de Postgres ativo via compose-up)
 test-integration:
-	cd $(BACKEND) && DATABASE_URL="$(TEST_DATABASE_URL)" uv run pytest -m integration
+	@echo "$(BLUE)Rodando testes de integração...$(NC)"
+	@cd $(BACKEND) && DATABASE_URL="$(TEST_DATABASE_URL)" uv run pytest -m integration
 
-## Cria o banco de dados de teste (idempotente) no mesmo Postgres do
-## compose - roda uma vez apos compose-up, antes do primeiro `make test`.
 test-db-create:
-	docker compose -f compose.yaml exec -T postgres psql -U $${POSTGRES_USER:-sentinel} -d postgres \
+	@echo "$(YELLOW)Criando banco de teste (idempotente)...$(NC)"
+	@docker compose -f compose.yaml exec -T postgres psql -U $${POSTGRES_USER:-sentinel} -d postgres \
 		-tc "SELECT 1 FROM pg_database WHERE datname = '$${POSTGRES_TEST_DB:-sentinelhealth_test}'" \
 		| grep -q 1 || docker compose -f compose.yaml exec -T postgres \
 		createdb -U $${POSTGRES_USER:-sentinel} $${POSTGRES_TEST_DB:-sentinelhealth_test}
+	@echo "$(GREEN)Banco de teste pronto$(NC)"
 
-## Aplica as migrations no banco de teste
 test-db-migrate:
-	cd $(BACKEND) && DATABASE_URL="$(TEST_DATABASE_URL)" uv run alembic upgrade head
+	@echo "$(YELLOW)Aplicando migrations no banco de teste...$(NC)"
+	@cd $(BACKEND) && DATABASE_URL="$(TEST_DATABASE_URL)" uv run alembic upgrade head
+	@echo "$(GREEN)Migrations aplicadas$(NC)"
 
-## Teste de carga leve contra uma API em execucao (uso: make load-test scenario=health)
-## Nao substitui um teste de carga completo em homologacao (ver ESCOPO_PROJETO.md secao 7).
 load-test:
-	cd $(BACKEND) && uv run python -m scripts.load_test --scenario $(or $(scenario),health)
+	@echo "$(BLUE)Rodando teste de carga (cenário: $(or $(scenario),health))...$(NC)"
+	@cd $(BACKEND) && uv run python -m scripts.load_test --scenario $(or $(scenario),health)
 
-## Build das imagens de container
-build:
-	docker compose -f compose.yaml build
+# =============================================================================
+# DADOS & REGRAS CLÍNICAS
+# =============================================================================
 
-## Validacao local equivalente ao gate de pull request
-check: lint typecheck test rules-validate
-
-## Gera os tipos TypeScript compartilhados a partir dos enums Python
-## (docs/contracts/README.md - fonte unica de verdade dos enums)
-codegen:
-	cd $(BACKEND) && PYTHONPATH=. uv run python -m scripts.export_enums
-
-## Exporta o snapshot versionado do contrato OpenAPI para docs/contracts/openapi.json
-export-openapi:
-	cd $(BACKEND) && PYTHONPATH=. uv run python -m scripts.export_openapi
-
-## Aplica as migrations pendentes
-migrate:
-	cd $(BACKEND) && uv run alembic upgrade head
-
-## Cria uma nova migration (uso: make migration name="descricao")
-migration:
-	cd $(BACKEND) && uv run alembic revision -m "$(name)"
-
-## Valida os arquivos YAML/JSON de regras clinicas contra o schema
 rules-validate:
-	cd $(BACKEND) && uv run python -m clinical_rules.cli validate
+	@echo "$(BLUE)Validando regras clínicas...$(NC)"
+	@cd $(BACKEND) && uv run python -m clinical_rules.cli validate && echo "$(GREEN)Regras válidas$(NC)"
 
-## Carrega as regras clinicas versionadas no banco (idempotente)
 rules-seed:
-	cd $(BACKEND) && uv run python -m clinical_rules.cli seed
+	@echo "$(BLUE)Carregando regras clínicas no banco...$(NC)"
+	@cd $(BACKEND) && uv run python -m clinical_rules.cli seed && echo "$(GREEN)Regras carregadas$(NC)"
 
-## Cria (ou reaproveita) uma instituicao de desenvolvimento e imprime o ID.
-## TEMPORARIO ate existir cadastro real de instituicoes/identidade.
 seed-dev-data:
-	cd $(BACKEND) && PYTHONPATH=. uv run python -m scripts.seed_dev_data
+	@echo "$(BLUE)Criando instituição e usuários de desenvolvimento...$(NC)"
+	@cd $(BACKEND) && PYTHONPATH=. uv run python -m scripts.seed_dev_data
 
-## Popula as 25 unidades assistenciais padrao (idempotente)
 seed-care-units:
-	cd $(BACKEND) && PYTHONPATH=. uv run python -m scripts.seed_care_units
+	@echo "$(BLUE)Populando unidades assistenciais...$(NC)"
+	@cd $(BACKEND) && PYTHONPATH=. uv run python -m scripts.seed_care_units
 
-## Popula 25 funcionarios ficticios com especialidade e papel de acesso aleatorios (idempotente)
 seed-employees:
-	cd $(BACKEND) && PYTHONPATH=. uv run python -m scripts.seed_employees
+	@echo "$(BLUE)Populando funcionários fictícios...$(NC)"
+	@cd $(BACKEND) && PYTHONPATH=. uv run python -m scripts.seed_employees
 
-## Popula 50 pacientes ficticios com 10 observacoes de cada sinal vital (idempotente)
 seed-patients:
-	cd $(BACKEND) && PYTHONPATH=. uv run python -m scripts.seed_patients
+	@echo "$(BLUE)Populando pacientes fictícios...$(NC)"
+	@cd $(BACKEND) && PYTHONPATH=. uv run python -m scripts.seed_patients
 
-## Roda uma iteracao do worker do orquestrador (item 10) e sai
-worker:
-	cd $(BACKEND) && PYTHONPATH=. uv run python -m scripts.run_orchestrator_worker --once
+# =============================================================================
+# BUILD & CONTRATOS
+# =============================================================================
 
-## Sobe os servicos definidos no compose.yaml
+build:
+	@echo "$(BLUE)Construindo imagens Docker...$(NC)"
+	@docker compose -f compose.yaml build && echo "$(GREEN)Build concluído$(NC)"
+
+codegen:
+	@echo "$(BLUE)Gerando enums TypeScript...$(NC)"
+	@cd $(BACKEND) && PYTHONPATH=. uv run python -m scripts.export_enums && echo "$(GREEN)Enums gerados$(NC)"
+
+export-openapi:
+	@echo "$(BLUE)Exportando snapshot OpenAPI...$(NC)"
+	@cd $(BACKEND) && PYTHONPATH=. uv run python -m scripts.export_openapi && echo "$(GREEN)OpenAPI exportado$(NC)"
+
+# =============================================================================
+# BANCO DE DADOS
+# =============================================================================
+
+migrate:
+	@echo "$(BLUE)Aplicando migrations...$(NC)"
+	@cd $(BACKEND) && uv run alembic upgrade head && echo "$(GREEN)Migrations aplicadas$(NC)"
+
+migration:
+	@echo "$(BLUE)Criando nova migration: $(name)$(NC)"
+	@cd $(BACKEND) && uv run alembic revision -m "$(name)"
+
+# =============================================================================
+# DOCKER COMPOSE
+# =============================================================================
+
 compose-up:
-	docker compose -f compose.yaml up -d postgres
+	@echo "$(BLUE)Subindo PostgreSQL...$(NC)"
+	@docker compose -f compose.yaml up -d postgres && echo "$(GREEN)Postgres disponível$(NC)"
 
-## Derruba os servicos definidos no compose.yaml
 compose-down:
-	docker compose -f compose.yaml down -v
+	@echo "$(YELLOW)Derrubando Compose e removendo volumes...$(NC)"
+	@docker compose -f compose.yaml down -v && echo "$(GREEN)Containers e volumes removidos$(NC)"
+
+
+# =============================================================================
+# INTEGRAÇÕES (Azure, OpenAI, YOLOv8)
+# =============================================================================
+
+check-env:
+	@echo "$(BLUE)═══════════════════════════════════════════════════════════════════$(NC)"
+	@echo "$(BLUE)  Status das integrações$(NC)"
+	@echo "$(BLUE)═══════════════════════════════════════════════════════════════════$(NC)"
+	@echo ""
+	@echo "  $(BLUE)▸ OpenAI (LLM + GPT-4 Vision)$(NC)"
+	@grep -q "^OPENAI_API_KEY=" .env 2>/dev/null && grep "^OPENAI_API_KEY=" .env | grep -qv "^OPENAI_API_KEY=$$" && \
+		echo "    $(GREEN)✓ OPENAI_API_KEY configurada$(NC)" || \
+		echo "    $(RED)✗ OPENAI_API_KEY não configurada$(NC)"
+	@grep -q "^LLM_PROVIDER=OPENAI" .env 2>/dev/null && \
+		echo "    $(GREEN)✓ LLM_PROVIDER=OPENAI$(NC)" || \
+		echo "    $(YELLOW)○ LLM_PROVIDER=LOCAL (template determinístico)$(NC)"
+	@echo ""
+	@echo "  $(BLUE)▸ Azure AI Speech (transcrição de áudio)$(NC)"
+	@grep -q "^AZURE_SPEECH_KEY=" .env 2>/dev/null && grep "^AZURE_SPEECH_KEY=" .env | grep -qv "^AZURE_SPEECH_KEY=$$" && \
+		echo "    $(GREEN)✓ AZURE_SPEECH_KEY configurada$(NC)" || \
+		echo "    $(RED)✗ AZURE_SPEECH_KEY não configurada$(NC)"
+	@grep -q "^TRANSCRIPTION_PROVIDER=AZURE_SPEECH" .env 2>/dev/null && \
+		echo "    $(GREEN)✓ TRANSCRIPTION_PROVIDER=AZURE_SPEECH$(NC)" || \
+		echo "    $(YELLOW)○ TRANSCRIPTION_PROVIDER=LOCAL$(NC)"
+	@echo ""
+	@echo "  $(BLUE)▸ Azure AI Language (sentimento)$(NC)"
+	@grep -q "^AZURE_LANGUAGE_KEY=" .env 2>/dev/null && grep "^AZURE_LANGUAGE_KEY=" .env | grep -qv "^AZURE_LANGUAGE_KEY=$$" && \
+		echo "    $(GREEN)✓ AZURE_LANGUAGE_KEY configurada$(NC)" || \
+		echo "    $(RED)✗ AZURE_LANGUAGE_KEY não configurada$(NC)"
+	@echo "    $(YELLOW)Requer feature flag: sentiment_analysis_enabled$(NC)"
+	@echo ""
+	@echo "  $(BLUE)▸ Azure AI Vision (reconhecimento de imagem)$(NC)"
+	@grep -q "^AZURE_VISION_KEY=" .env 2>/dev/null && grep "^AZURE_VISION_KEY=" .env | grep -qv "^AZURE_VISION_KEY=$$" && \
+		echo "    $(GREEN)✓ AZURE_VISION_KEY configurada$(NC)" || \
+		echo "    $(RED)✗ AZURE_VISION_KEY não configurada$(NC)"
+	@echo "    $(YELLOW)Requer feature flag: image_recognition_enabled$(NC)"
+	@echo ""
+	@echo "  $(BLUE)▸ Azure DICOM Service (imagens médicas)$(NC)"
+	@grep -q "^AZURE_DICOM_ENDPOINT=" .env 2>/dev/null && grep "^AZURE_DICOM_ENDPOINT=" .env | grep -qv "^AZURE_DICOM_ENDPOINT=$$" && \
+		echo "    $(GREEN)✓ AZURE_DICOM_ENDPOINT configurada$(NC)" || \
+		echo "    $(RED)✗ AZURE_DICOM_ENDPOINT não configurada$(NC)"
+	@echo "    $(YELLOW)Requer feature flag: dicom_service_enabled$(NC)"
+	@echo ""
+	@echo "  $(BLUE)▸ YOLOv8 (detecção de objetos em vídeo)$(NC)"
+	@grep -q "^VISION_PROVIDER=OPENPOSE_YOLOV8" .env 2>/dev/null && \
+		echo "    $(GREEN)✓ VISION_PROVIDER=OPENPOSE_YOLOV8$(NC)" || \
+		echo "    $(YELLOW)○ VISION_PROVIDER=LOCAL$(NC)"
+	@cd $(BACKEND) && uv run python -c "import ultralytics; print('OK')" 2>/dev/null && \
+		echo "    $(GREEN)✓ ultralytics instalado$(NC)" || \
+		echo "    $(RED)✗ ultralytics não instalado (rode: make setup-yolo)$(NC)"
+	@echo "    $(YELLOW)Requer feature flag: vision_detection_enabled$(NC)"
+	@echo ""
+	@which ffmpeg >/dev/null 2>&1 && \
+		echo "  $(GREEN)✓ ffmpeg disponível no PATH$(NC)" || \
+		echo "  $(RED)✗ ffmpeg não encontrado (necessário para áudio/vídeo)$(NC)"
+	@echo ""
+	@echo "$(BLUE)═══════════════════════════════════════════════════════════════════$(NC)"
+
+setup-azure:
+	@echo "$(BLUE)═══════════════════════════════════════════════════════════════════$(NC)"
+	@echo "$(BLUE)  Criando recursos Azure para SentinelHealth$(NC)"
+	@echo "$(BLUE)═══════════════════════════════════════════════════════════════════$(NC)"
+	@echo ""
+	@which az >/dev/null 2>&1 || (echo "$(RED)Azure CLI não encontrada. Instale: https://aka.ms/installazurecli$(NC)" && exit 1)
+	@az account show >/dev/null 2>&1 || (echo "$(RED)Não autenticado. Rode: az login$(NC)" && exit 1)
+	@echo "$(GREEN)Azure CLI autenticada$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Criando resource group rg-sentinelhealth...$(NC)"
+	@az group create --name rg-sentinelhealth --location eastus -o none 2>/dev/null && echo "$(GREEN)Resource group OK$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Criando Azure AI Speech (S0)...$(NC)"
+	@az cognitiveservices account create --name sentinelhealth-speech --resource-group rg-sentinelhealth --kind SpeechServices --sku S0 --location eastus --yes -o none 2>/dev/null && echo "$(GREEN)Speech OK$(NC)" || echo "$(YELLOW)Speech já existe ou falhou$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Criando Azure AI Language (S)...$(NC)"
+	@az cognitiveservices account create --name sentinelhealth-language --resource-group rg-sentinelhealth --kind TextAnalytics --sku S --location eastus --yes -o none 2>/dev/null && echo "$(GREEN)Language OK$(NC)" || echo "$(YELLOW)Language já existe ou falhou$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Criando Azure AI Vision (S1)...$(NC)"
+	@az cognitiveservices account create --name sentinelhealth-vision --resource-group rg-sentinelhealth --kind ComputerVision --sku S1 --location eastus --yes -o none 2>/dev/null && echo "$(GREEN)Vision OK$(NC)" || echo "$(YELLOW)Vision já existe ou falhou$(NC)"
+	@echo ""
+	@echo "$(GREEN)═══════════════════════════════════════════════════════════════════$(NC)"
+	@echo "$(GREEN)  Recursos criados! Extraia as chaves com:$(NC)"
+	@echo "$(GREEN)═══════════════════════════════════════════════════════════════════$(NC)"
+	@echo ""
+	@echo "  $(GREEN)az cognitiveservices account keys list --name sentinelhealth-speech --resource-group rg-sentinelhealth --query key1 -o tsv$(NC)"
+	@echo "  $(GREEN)az cognitiveservices account keys list --name sentinelhealth-language --resource-group rg-sentinelhealth --query key1 -o tsv$(NC)"
+	@echo "  $(GREEN)az cognitiveservices account keys list --name sentinelhealth-vision --resource-group rg-sentinelhealth --query key1 -o tsv$(NC)"
+	@echo ""
+	@echo "  Preencha as variáveis correspondentes no .env"
+	@echo ""
+
+setup-yolo:
+	@echo "$(BLUE)Instalando YOLOv8 (grupo de dependências vision)...$(NC)"
+	@cd $(BACKEND) && uv sync --group vision && echo "$(GREEN)YOLOv8 instalado$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Configure no .env:$(NC)"
+	@echo "  $(GREEN)VISION_PROVIDER=OPENPOSE_YOLOV8$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Ligue a feature flag na tela /admin/feature-flags:$(NC)"
+	@echo "  $(GREEN)vision_detection_enabled = true$(NC)"
+	@echo ""
