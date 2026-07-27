@@ -1,4 +1,4 @@
-.PHONY: help setup dev stop format lint typecheck test test-integration load-test build check \
+.PHONY: help check-prereqs setup dev stop format lint typecheck test test-integration load-test build check \
         migrate migration rules-validate rules-seed compose-up compose-down \
         codegen export-openapi seed-dev-data seed-care-units seed-employees seed-patients \
         worker worker-loop up logs health \
@@ -31,6 +31,7 @@ help:
 	@echo "$(BLUE)═══════════════════════════════════════════════════════════════════$(NC)"
 	@echo ""
 	@echo "  $(BLUE)▸ SETUP$(NC)"
+	@echo "    $(GREEN)make check-prereqs$(NC)    - Verifica pré-requisitos (Python, Node, Docker, etc)"
 	@echo "    $(GREEN)make setup$(NC)            - Instala dependências (backend + frontend)"
 	@echo "    $(GREEN)make compose-up$(NC)       - Sobe o PostgreSQL local via Docker Compose"
 	@echo "    $(GREEN)make migrate$(NC)          - Aplica migrations pendentes no banco"
@@ -84,7 +85,94 @@ help:
 # SETUP
 # =============================================================================
 
-setup:
+check-prereqs:
+	@echo "$(BLUE)═══════════════════════════════════════════════════════════════════$(NC)"
+	@echo "$(BLUE)  Verificação de pré-requisitos$(NC)"
+	@echo "$(BLUE)═══════════════════════════════════════════════════════════════════$(NC)"
+	@echo ""
+	@ERRORS=0; \
+	echo "  $(BLUE)▸ Python (gerenciado pelo uv)$(NC)"; \
+	if uv python find ">=3.11,<3.13" >/dev/null 2>&1; then \
+		echo "    $(GREEN)✓ Python $$(uv python find '>=3.11,<3.13' 2>/dev/null | xargs -I{} {} --version 2>/dev/null || echo '3.11+')$(NC)"; \
+	elif python3 --version 2>/dev/null | grep -qE "3\.(11|12)"; then \
+		echo "    $(GREEN)✓ $$(python3 --version) (sistema)$(NC)"; \
+	else \
+		echo "    $(YELLOW)○ Python 3.11/3.12 não encontrado — o uv instalará automaticamente$(NC)"; \
+	fi; \
+	echo ""; \
+	echo "  $(BLUE)▸ uv (gerenciador de pacotes Python)$(NC)"; \
+	if which uv >/dev/null 2>&1; then \
+		echo "    $(GREEN)✓ $$(uv --version)$(NC)"; \
+	else \
+		echo "    $(RED)✗ uv não encontrado — instale: curl -LsSf https://astral.sh/uv/install.sh | sh$(NC)"; \
+		ERRORS=$$((ERRORS+1)); \
+	fi; \
+	echo ""; \
+	echo "  $(BLUE)▸ Node.js$(NC)"; \
+	if node --version 2>/dev/null | grep -qE "^v(2[2-9]|[3-9])"; then \
+		echo "    $(GREEN)✓ Node.js $$(node --version)$(NC)"; \
+	else \
+		echo "    $(RED)✗ Node.js 22+ não encontrado$(NC)"; \
+		ERRORS=$$((ERRORS+1)); \
+	fi; \
+	echo ""; \
+	echo "  $(BLUE)▸ npm$(NC)"; \
+	if which npm >/dev/null 2>&1; then \
+		echo "    $(GREEN)✓ npm $$(npm --version)$(NC)"; \
+	else \
+		echo "    $(RED)✗ npm não encontrado$(NC)"; \
+		ERRORS=$$((ERRORS+1)); \
+	fi; \
+	echo ""; \
+	echo "  $(BLUE)▸ Docker$(NC)"; \
+	if which docker >/dev/null 2>&1; then \
+		echo "    $(GREEN)✓ $$(docker --version | head -1)$(NC)"; \
+	else \
+		echo "    $(RED)✗ Docker não encontrado$(NC)"; \
+		ERRORS=$$((ERRORS+1)); \
+	fi; \
+	echo ""; \
+	echo "  $(BLUE)▸ Docker Compose$(NC)"; \
+	if docker compose version >/dev/null 2>&1; then \
+		echo "    $(GREEN)✓ $$(docker compose version)$(NC)"; \
+	else \
+		echo "    $(RED)✗ Docker Compose não encontrado$(NC)"; \
+		ERRORS=$$((ERRORS+1)); \
+	fi; \
+	echo ""; \
+	echo "  $(BLUE)▸ Git$(NC)"; \
+	if which git >/dev/null 2>&1; then \
+		echo "    $(GREEN)✓ $$(git --version)$(NC)"; \
+	else \
+		echo "    $(RED)✗ Git não encontrado$(NC)"; \
+		ERRORS=$$((ERRORS+1)); \
+	fi; \
+	echo ""; \
+	echo "  $(BLUE)▸ ffmpeg (opcional, para áudio/vídeo)$(NC)"; \
+	if which ffmpeg >/dev/null 2>&1; then \
+		echo "    $(GREEN)✓ $$(ffmpeg -version 2>&1 | head -1)$(NC)"; \
+	else \
+		echo "    $(YELLOW)○ ffmpeg não encontrado (necessário para análise de áudio/vídeo)$(NC)"; \
+	fi; \
+	echo ""; \
+	echo "  $(BLUE)▸ Azure CLI (opcional, para setup-azure)$(NC)"; \
+	if which az >/dev/null 2>&1; then \
+		echo "    $(GREEN)✓ $$(az version --query '\"azure-cli\"' -o tsv 2>/dev/null)$(NC)"; \
+	else \
+		echo "    $(YELLOW)○ Azure CLI não encontrada (necessária apenas para make setup-azure)$(NC)"; \
+	fi; \
+	echo ""; \
+	echo "$(BLUE)═══════════════════════════════════════════════════════════════════$(NC)"; \
+	if [ $$ERRORS -eq 0 ]; then \
+		echo "$(GREEN)  Todos os pré-requisitos obrigatórios estão instalados!$(NC)"; \
+		echo "$(GREEN)  Rode: make setup$(NC)"; \
+	else \
+		echo "$(RED)  $$ERRORS pré-requisito(s) obrigatório(s) não encontrado(s).$(NC)"; \
+		echo "$(RED)  Instale os itens marcados com ✗ antes de continuar.$(NC)"; \
+	fi; \
+	echo "$(BLUE)═══════════════════════════════════════════════════════════════════$(NC)"
+
+setup: check-prereqs
 	@echo "$(BLUE)═══════════════════════════════════════════════════════════════════$(NC)"
 	@echo "$(BLUE)  Setup — SentinelHealth$(NC)"
 	@echo "$(BLUE)═══════════════════════════════════════════════════════════════════$(NC)"
