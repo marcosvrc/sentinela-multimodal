@@ -485,6 +485,8 @@ Mensagens transportarão somente identificadores e metadados mínimos. Mídias e
 
 ### 6.7 Máquina de Estados da Análise
 
+Diagrama das transições válidas: [`docs/architecture/10-maquina-estados-analise.mmd`](architecture/10-maquina-estados-analise.mmd) ([PNG](architecture/10-maquina-estados-analise.png)).
+
 | Estado | Significado |
 | --- | --- |
 | `CREATED` | Registro criado, aguardando mídias |

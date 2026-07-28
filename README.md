@@ -109,7 +109,7 @@ cada módulo): [`docs/ESTRUTURA_PROJETO.md`](docs/ESTRUTURA_PROJETO.md).
 | Frontend | React 18, TypeScript, Vite, TanStack Query |
 | Banco de dados | PostgreSQL 16 |
 | Fila de processamento | Tabela PostgreSQL (`SELECT ... FOR UPDATE SKIP LOCKED`) |
-| Armazenamento de mídia | Filesystem local (MVP), atrás de URL pré-assinada |
+| Armazenamento de mídia | Filesystem local, atrás de URL pré-assinada |
 | Nuvem gerenciada | Azure Cognitive Services (Speech, Language, Vision) + Azure Health Data Services (DICOM) |
 | LLM | OpenAI (opcional) ou template determinístico local |
 | Visão contextual de imagem/vídeo | GPT-4 Vision (OpenAI), independente da flag de LLM |
@@ -133,32 +133,15 @@ transcrição, visão, storage) é um adaptador plugável, com um modo
 `LOCAL` honesto (nunca inventa resultado) e um modo real — a troca é por
 configuração, nunca por código espalhado.
 
-```mermaid
-graph TB
-    profissional["Profissional de saude"]
-    subgraph sentinelhealth["SentinelHealth"]
-        sistema["Sistema de apoio a<br/>analises clinicas multimodais"]
-    end
-    speech["Azure AI Speech"]
-    language["Azure AI Language"]
-    vision["Azure AI Vision"]
-    dicom["Azure Health Data<br/>Services (DICOM)"]
-    openai["OpenAI GPT<br/>(LLM + GPT-4 Vision)"]
-
-    profissional -->|cadastra pacientes,<br/>envia midias,<br/>revisa relatorios| sistema
-    sistema -->|transcreve audio| speech
-    sistema -->|analisa sentimento/termos| language
-    sistema -->|reconhece rotulos de imagem| vision
-    sistema -->|armazena imagens medicas| dicom
-    sistema -->|sintese estruturada +<br/>analise contextual de imagem/video| openai
-```
+![Diagrama de contexto (C4 nível 1) do SentinelHealth](docs/architecture/01-contexto.png)
 
 Diagrama de contexto completo, diagrama de containers, sequência do
 fluxo multimodal ponta a ponta, módulos do backend/frontend e a lista de
 ADRs (decisões arquiteturais): [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
 
-Diagramas Mermaid adicionais (autenticação, upload seguro, auditoria,
-modelo ER, fluxo de dados pessoais/RIPD): [`docs/architecture/`](docs/architecture/).
+Diagramas adicionais em PNG (autenticação, upload seguro, auditoria,
+modelo ER, fluxo de dados pessoais/RIPD), cada um com a fonte Mermaid
+`.mmd` correspondente para edição: [`docs/architecture/`](docs/architecture/).
 
 ---
 
@@ -393,7 +376,7 @@ Linux) e por integração (Azure/OpenAI/visão): ver as seções finais de
 | [`docs/ESPECIFICACAO_FRONTEND.md`](docs/ESPECIFICACAO_FRONTEND.md) | Telas, design system e contratos de frontend |
 | [`docs/CLASSIFICACAO_DADOS_CLINICOS.md`](docs/CLASSIFICACAO_DADOS_CLINICOS.md) | Base de conhecimento clínica (referência preliminar) |
 | [`docs/adr/`](docs/adr/) | Decisões arquiteturais (ADRs) individuais |
-| [`docs/architecture/`](docs/architecture/) | Diagramas Mermaid adicionais (autenticação, auditoria, ER, RIPD) |
+| [`docs/architecture/`](docs/architecture/) | Diagramas PNG adicionais (autenticação, auditoria, ER, RIPD), com fonte Mermaid `.mmd` |
 | [`docs/governance/`](docs/governance/) | Plano de resposta a incidentes, validação de escopo |
 
 ---

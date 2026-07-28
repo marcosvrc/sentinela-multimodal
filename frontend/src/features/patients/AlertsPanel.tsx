@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Eye } from "lucide-react";
 import styles from "./AlertsPanel.module.css";
@@ -46,6 +46,12 @@ interface AlertsPanelProps {
    * deve conter o historico completo em vez de depender do usuario ter
    * escolhido uma severidade na tela. */
   printMode?: boolean;
+  /** Chamado quando a busca de todos os alertas (disparada por
+   * `printMode`) termina, com sucesso ou erro - usado pela exportacao em
+   * PDF para so capturar o DOM depois que a tabela substituiu o
+   * `Skeleton` de carregamento (sem isso, `html2canvas` pode fotografar
+   * o skeleton parado). */
+  onPrintDataReady?: () => void;
 }
 
 /**
@@ -61,7 +67,12 @@ interface AlertsPanelProps {
  */
 const PRINT_PAGE_SIZE = 200;
 
-export function AlertsPanel({ devSubject, patientId, printMode }: AlertsPanelProps) {
+export function AlertsPanel({
+  devSubject,
+  patientId,
+  printMode,
+  onPrintDataReady,
+}: AlertsPanelProps) {
   const queryClient = useQueryClient();
   const { showSuccess, showError } = useToast();
   const [selectedSeverity, setSelectedSeverity] = useState<AlertSeverity | null>(null);
@@ -96,6 +107,16 @@ export function AlertsPanel({ devSubject, patientId, printMode }: AlertsPanelPro
       listPatientAlerts(devSubject, patientId, { page: 1, pageSize: PRINT_PAGE_SIZE }),
     enabled: Boolean(printMode),
   });
+
+  // Avisa o chamador (exportacao em PDF) quando a busca disparada por
+  // `printMode` terminar - sucesso ou erro - para que a captura do DOM
+  // (`html2canvas`) so aconteça depois que o `Skeleton` de carregamento
+  // tiver sido substituido pelo conteudo real.
+  useEffect(() => {
+    if (printMode && (allAlertsQuery.isSuccess || allAlertsQuery.isError)) {
+      onPrintDataReady?.();
+    }
+  }, [printMode, allAlertsQuery.isSuccess, allAlertsQuery.isError, onPrintDataReady]);
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ["alerts", "summary", patientId] });

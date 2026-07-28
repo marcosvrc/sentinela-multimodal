@@ -1,0 +1,53 @@
+%% Maquina de estados da analise (AnalysisStatus)
+%% Fonte de verdade: backend/app/core/enums.py::ANALYSIS_STATUS_TRANSITIONS
+%% O backend valida toda transicao contra esse mapa; o frontend nunca
+%% deduz transicoes permitidas por conta propria (usa available_actions).
+stateDiagram-v2
+    [*] --> CREATED
+
+    CREATED --> UPLOADING
+    CREATED --> CANCELLED
+
+    UPLOADING --> QUEUED
+    UPLOADING --> CANCELLED
+
+    QUEUED --> PROCESSING
+    QUEUED --> CANCELLED
+
+    PROCESSING --> PARTIALLY_COMPLETED
+    PROCESSING --> WAITING_REVIEW
+    PROCESSING --> FAILED_RETRYABLE
+    PROCESSING --> FAILED_FINAL
+    PROCESSING --> CANCELLED
+
+    PARTIALLY_COMPLETED --> WAITING_REVIEW
+    PARTIALLY_COMPLETED --> FAILED_FINAL
+    PARTIALLY_COMPLETED --> CANCELLED
+
+    FAILED_RETRYABLE --> QUEUED
+    FAILED_RETRYABLE --> CANCELLED
+
+    WAITING_REVIEW --> COMPLETED
+
+    COMPLETED --> [*]
+    FAILED_FINAL --> [*]
+    CANCELLED --> [*]
+
+    note right of PROCESSING
+        Orquestrador decide o estado final por
+        modalidade: todas COMPLETED -> WAITING_REVIEW;
+        mistura de COMPLETED e falha -> PARTIALLY_COMPLETED;
+        nenhuma COMPLETED -> FAILED_RETRYABLE.
+    end note
+
+    note right of WAITING_REVIEW
+        Unica transicao valida: profissional confirma
+        o relatorio (POST /analyses/{id}/report/confirm).
+        Nunca retorna a PROCESSING.
+    end note
+
+    note right of FAILED_RETRYABLE
+        Falha transitoria (ex.: nenhum processador
+        registrado para a modalidade, erro de integracao).
+        Nova tentativa reenfileira via QUEUED.
+    end note

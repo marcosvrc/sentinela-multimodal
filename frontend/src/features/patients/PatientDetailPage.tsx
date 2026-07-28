@@ -34,6 +34,13 @@ export function PatientDetailPage() {
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const printableRef = useRef<HTMLDivElement>(null);
+  // Resolve a promise aguardada por `handleExportPdf` quando o
+  // `AlertsPanel` avisa (via `onPrintDataReady`) que a busca de "todos os
+  // alertas" (disparada por `printMode`) terminou - a captura do DOM so
+  // deve acontecer depois disso, senao `html2canvas` fotografa o
+  // `Skeleton` de carregamento (a barra cinza animada) parado no meio do
+  // PDF gerado.
+  const alertsPrintReadyResolveRef = useRef<(() => void) | null>(null);
 
   const patientQuery = useQuery({
     queryKey: ["patient", subject, patientId],
@@ -82,11 +89,17 @@ export function PatientDetailPage() {
     try {
       // Forca a expansao de todos os paineis (via `forceOpen`, re-render
       // sincrono) antes de capturar o DOM - sem isso, apenas os paineis
-      // que o usuario ja tinha aberto apareceriam no PDF. Um pequeno
-      // atraso garante que o navegador tenha pintado o novo layout (e o
-      // `recharts` recalculado o `ResponsiveContainer`) antes da captura.
+      // que o usuario ja tinha aberto apareceriam no PDF. Alem de deixar
+      // o navegador pintar o novo layout (e o `recharts` recalcular o
+      // `ResponsiveContainer`), espera de fato a busca de "todos os
+      // alertas" do `AlertsPanel` terminar - sem isso, a captura pode
+      // acontecer com o `Skeleton` de carregamento ainda visivel.
+      const alertsReady = new Promise<void>((resolve) => {
+        alertsPrintReadyResolveRef.current = resolve;
+      });
       await new Promise((resolve) => requestAnimationFrame(resolve));
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      await alertsReady;
+      await new Promise((resolve) => requestAnimationFrame(resolve));
       await exportElementToPdf(printableRef.current, {
         patientName: patient?.full_name ?? "Paciente",
         medicalRecordNumber: patient?.medical_record_number ?? "",
@@ -100,6 +113,7 @@ export function PatientDetailPage() {
         error instanceof Error ? error.message : "Nao foi possivel gerar o PDF desta tela.",
       );
     } finally {
+      alertsPrintReadyResolveRef.current = null;
       setIsExportingPdf(false);
     }
   }
@@ -140,7 +154,12 @@ export function PatientDetailPage() {
           </div>
         </Section>
 
-        <AlertsPanel devSubject={subject} patientId={patientId} printMode={isExportingPdf} />
+        <AlertsPanel
+          devSubject={subject}
+          patientId={patientId}
+          printMode={isExportingPdf}
+          onPrintDataReady={() => alertsPrintReadyResolveRef.current?.()}
+        />
 
         <ClinicalSupportPanel devSubject={subject} patientId={patientId} />
 

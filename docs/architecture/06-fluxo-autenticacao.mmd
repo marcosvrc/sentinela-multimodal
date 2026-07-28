@@ -1,10 +1,10 @@
-%% Fluxo de autenticacao e autorizacao (MVP: adaptador local de identidade)
+%% Fluxo de autenticacao e autorizacao (adaptador local de identidade)
 sequenceDiagram
     actor Prof as Profissional
     participant FE as Frontend
     participant API as API
 
-    Note over Prof,API: MVP: identidade resolvida por cabecalho de<br/>desenvolvimento (X-Dev-Subject) - sem senha/MFA real.<br/>Um provedor de identidade gerenciado (ex.: Azure AD/<br/>Microsoft Entra ID) e evolucao futura.
+    Note over Prof,API: Identidade resolvida por cabecalho de<br/>desenvolvimento (X-Dev-Subject) - sem senha/MFA real.<br/>Um provedor de identidade gerenciado (ex.: Azure AD/<br/>Microsoft Entra ID) e evolucao futura.
 
     Prof->>FE: Seleciona usuario de desenvolvimento
     FE->>API: Requisicao com X-Dev-Subject: <external_subject>

@@ -7,8 +7,8 @@ graph TB
         sistema["Sistema de apoio a<br/>analises clinicas multimodais"]
     end
 
-    identidade[("Identidade<br/>(adaptador local no MVP;<br/>provedor gerenciado e evolucao futura)")]
-    storage[("Armazenamento de midia<br/>(filesystem local no MVP)")]
+    identidade[("Identidade<br/>(adaptador local;<br/>provedor gerenciado e evolucao futura)")]
+    storage[("Armazenamento de midia<br/>(filesystem local)")]
     speech["Azure AI Speech<br/>(transcricao de audio)"]
     language["Azure AI Language<br/>(sentimento/termos, contextual)"]
     vision["Azure AI Vision<br/>(reconhecimento de imagem, opcional)"]
@@ -24,4 +24,4 @@ graph TB
     sistema -->|analisa sentimento/termos| language
     sistema -->|reconhece rotulos de imagem| vision
     sistema -->|solicita sintese<br/>estruturada| openai
-    sistema -.->|integracao futura,<br/>fora do MVP| prontuario
+    sistema -.->|integracao futura,<br/>fora do escopo atual| prontuario
