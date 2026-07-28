@@ -448,13 +448,65 @@ export function AnalysisReviewPage() {
                             continue;
                           }
 
-                          // Sentimento
+                          // Sentimento (Azure AI Language) - inclui o
+                          // percentual de confianca do score dominante
+                          // (details.scores), antes calculado mas nunca
+                          // exibido ao profissional.
                           if (item.details?.sentiment) {
                             const s = item.details.sentiment as string;
                             const sl = s === "NEGATIVE" ? "Negativo" : s === "POSITIVE" ? "Positivo" : s === "MIXED" ? "Misto" : "Neutro";
+                            const scoreKey = s === "NEGATIVE" ? "negative" : s === "POSITIVE" ? "positive" : s === "MIXED" ? "mixed" : "neutral";
+                            const scores = item.details?.scores as Record<string, number> | undefined;
+                            const scoreValue = scores?.[scoreKey];
+                            const pct = typeof scoreValue === "number" ? ` (${Math.round(scoreValue * 100)}%)` : "";
                             const kp = item.summary.match(/Termos-chave identificados: (.+)/)?.[1] || "";
-                            relevantItems.push({ label: "Sentimento", text: `${sl}${kp ? ` — ${kp}` : ""}` });
+                            relevantItems.push({ label: "Sentimento", text: `${sl}${pct}${kp ? ` — ${kp}` : ""}` });
                             continue;
+                          }
+
+                          // Rotulos reconhecidos por Azure AI Vision -
+                          // confianca por rotulo (details.labels), antes
+                          // calculada no backend mas nunca exibida.
+                          if (Array.isArray(item.details?.labels) && (item.details.labels as unknown[]).length > 0) {
+                            const labels = item.details.labels as Array<{ label: string; confidence: number }>;
+                            const text = labels
+                              .map((l) => `${l.label} (${Math.round(l.confidence)}%)`)
+                              .join(", ");
+                            relevantItems.push({ label: "Rótulos reconhecidos (confiança)", text });
+                            continue;
+                          }
+
+                          // Visao computacional de video (YOLOv8/OpenPose) -
+                          // confianca media por objeto detectado e
+                          // confianca media dos keypoints de pose, ambas
+                          // calculadas no backend mas antes nunca exibidas
+                          // (so a contagem aparecia no resumo textual).
+                          if (item.details?.provider === "openpose_yolov8" && item.details?.status === "COMPLETED") {
+                            const detFindings = (item.details?.detection_findings as Array<{ label: string; confidence: number }> | undefined) || [];
+                            const poseFindings = (item.details?.pose_findings as Array<{ person_count: number; mean_keypoint_confidence: number | null }> | undefined) || [];
+                            const parts: string[] = [];
+                            if (detFindings.length > 0) {
+                              const byLabel = new Map<string, number[]>();
+                              for (const d of detFindings) {
+                                byLabel.set(d.label, [...(byLabel.get(d.label) || []), d.confidence]);
+                              }
+                              const labelText = Array.from(byLabel.entries())
+                                .map(([label, confs]) => `${label} (${Math.round((confs.reduce((a, b) => a + b, 0) / confs.length) * 100)}%)`)
+                                .join(", ");
+                              parts.push(`Objetos (YOLOv8): ${labelText}`);
+                            }
+                            const validPoseConf = poseFindings
+                              .map((p) => p.mean_keypoint_confidence)
+                              .filter((c): c is number => c != null);
+                            if (validPoseConf.length > 0) {
+                              const avgPersons = poseFindings.reduce((a, p) => a + p.person_count, 0) / poseFindings.length;
+                              const avgConf = validPoseConf.reduce((a, b) => a + b, 0) / validPoseConf.length;
+                              parts.push(`Pose (OpenPose): ${avgPersons.toFixed(1)} pessoa(s)/quadro em média, confiança média dos keypoints ${Math.round(avgConf * 100)}%`);
+                            }
+                            if (parts.length > 0) {
+                              relevantItems.push({ label: "Visão computacional (confiança)", text: parts.join(" · ") });
+                              continue;
+                            }
                           }
 
                           // Acústica

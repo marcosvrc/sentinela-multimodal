@@ -39,7 +39,7 @@ export interface ObservationTypeConfig {
 export const OBSERVATION_TYPE_CONFIG: Record<ObservationType, ObservationTypeConfig> = {
   [ObservationType.SPO2]: {
     type: ObservationType.SPO2,
-    label: "Saturacao (SpO2)",
+    label: "Saturação (SpO₂)",
     unit: "%",
     hasChart: true,
     series: [
@@ -48,7 +48,7 @@ export const OBSERVATION_TYPE_CONFIG: Record<ObservationType, ObservationTypeCon
   },
   [ObservationType.HEART_RATE]: {
     type: ObservationType.HEART_RATE,
-    label: "Frequencia cardiaca",
+    label: "Frequência cardíaca",
     unit: "bpm",
     hasChart: true,
     series: [
@@ -57,7 +57,7 @@ export const OBSERVATION_TYPE_CONFIG: Record<ObservationType, ObservationTypeCon
   },
   [ObservationType.RESPIRATORY_RATE]: {
     type: ObservationType.RESPIRATORY_RATE,
-    label: "Frequencia respiratoria",
+    label: "Frequência respiratória",
     unit: "irpm",
     hasChart: true,
     series: [
@@ -75,7 +75,7 @@ export const OBSERVATION_TYPE_CONFIG: Record<ObservationType, ObservationTypeCon
   },
   [ObservationType.BLOOD_PRESSURE]: {
     type: ObservationType.BLOOD_PRESSURE,
-    label: "Pressao arterial",
+    label: "Pressão arterial",
     unit: "mmHg",
     hasChart: true,
     series: [
@@ -136,14 +136,14 @@ export const OBSERVATION_TYPE_CONFIG: Record<ObservationType, ObservationTypeCon
   },
   [ObservationType.CONSCIOUSNESS]: {
     type: ObservationType.CONSCIOUSNESS,
-    label: "Nivel de consciencia",
+    label: "Nível de consciência",
     unit: "",
     hasChart: false,
     series: [],
   },
   [ObservationType.URINE_OUTPUT]: {
     type: ObservationType.URINE_OUTPUT,
-    label: "Debito urinario (diurese)",
+    label: "Débito urinário (diurese)",
     unit: "mL/h",
     hasChart: true,
     series: [

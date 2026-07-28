@@ -200,26 +200,56 @@ export function MultimodalStats({ content }: MultimodalStatsProps) {
                       byMod.set(e.modality_type, { quality: e.quality_state || "-", scores: "-" });
                     }
                   }
-                  // Enrich with sentiment scores if available
+                  // Enriquece com o indicador de confianca disponivel de
+                  // cada modalidade - todos calculados no backend, aqui
+                  // apenas exibidos (nunca inventados na UI):
+                  // sentimento (Azure AI Language), rotulos de imagem
+                  // (Azure AI Vision), deteccao de objetos (YOLOv8) e
+                  // estimativa de pose (OpenPose).
                   for (const o of content.model_observations) {
+                    if (!byMod.has(o.modality_type)) continue;
+                    const entry = byMod.get(o.modality_type)!;
+                    if (entry.scores !== "-") continue;
+
                     const scores = o.details?.scores as Record<string, number> | undefined;
-                    if (scores && byMod.has(o.modality_type)) {
-                      const entry = byMod.get(o.modality_type)!;
-                      // Sentiment scores: mostrar como "Sentimento" não como confiança
-                      const sentiment = o.details?.sentiment as string | undefined;
-                      if (sentiment && entry.scores === "-") {
-                        const sentLabel = sentiment === "NEGATIVE" ? "Negativo" : sentiment === "POSITIVE" ? "Positivo" : sentiment === "MIXED" ? "Misto" : "Neutro";
-                        entry.scores = `Sentimento: ${sentLabel}`;
+                    const sentiment = o.details?.sentiment as string | undefined;
+                    if (sentiment && scores) {
+                      const scoreKey = sentiment === "NEGATIVE" ? "negative" : sentiment === "POSITIVE" ? "positive" : sentiment === "MIXED" ? "mixed" : "neutral";
+                      const sentLabel = sentiment === "NEGATIVE" ? "Negativo" : sentiment === "POSITIVE" ? "Positivo" : sentiment === "MIXED" ? "Misto" : "Neutro";
+                      const pct = scores[scoreKey] != null ? ` (${Math.round(scores[scoreKey] * 100)}%)` : "";
+                      entry.scores = `Sentimento: ${sentLabel}${pct}`;
+                      continue;
+                    }
+
+                    // Imagem: rotulos do Azure AI Vision, cada um com sua
+                    // propria confianca (0-100).
+                    const labels = o.details?.labels as Array<{ label: string; confidence: number }> | undefined;
+                    if (labels && labels.length > 0) {
+                      const avgConf = labels.reduce((sum, l) => sum + l.confidence, 0) / labels.length;
+                      entry.scores = `Confiança média dos rótulos: ${Math.round(avgConf)}% (${labels.length} rótulo(s))`;
+                      continue;
+                    }
+
+                    // Video: deteccao de objetos (YOLOv8, confidence 0-1)
+                    // e/ou estimativa de pose (OpenPose,
+                    // mean_keypoint_confidence 0-1) - reporta o que de
+                    // fato rodou (motores sao independentes).
+                    const detFindings = o.details?.detection_findings as Array<{ confidence: number }> | undefined;
+                    const poseFindings = o.details?.pose_findings as Array<{ mean_keypoint_confidence: number | null }> | undefined;
+                    const parts: string[] = [];
+                    if (detFindings && detFindings.length > 0) {
+                      const avgConf = detFindings.reduce((sum, d) => sum + d.confidence, 0) / detFindings.length;
+                      parts.push(`objetos ${Math.round(avgConf * 100)}% (${detFindings.length} detecções)`);
+                    }
+                    if (poseFindings && poseFindings.length > 0) {
+                      const validConf = poseFindings.map((p) => p.mean_keypoint_confidence).filter((c): c is number => c != null);
+                      if (validConf.length > 0) {
+                        const avgConf = validConf.reduce((a, b) => a + b, 0) / validConf.length;
+                        parts.push(`pose ${Math.round(avgConf * 100)}%`);
                       }
                     }
-                    // Video/Image: detection_findings com confidence
-                    const detFindings = o.details?.detection_findings as Array<{ confidence: number }> | undefined;
-                    if (detFindings && detFindings.length > 0 && byMod.has(o.modality_type)) {
-                      const entry = byMod.get(o.modality_type)!;
-                      const avgConf = detFindings.reduce((sum, d) => sum + d.confidence, 0) / detFindings.length;
-                      if (entry.scores === "-") {
-                        entry.scores = `Confiança média: ${Math.round(avgConf * 100)}% (${detFindings.length} detecções)`;
-                      }
+                    if (parts.length > 0) {
+                      entry.scores = `Confiança média: ${parts.join(" · ")}`;
                     }
                   }
                   return Array.from(byMod.entries()).map(([mod, data]) => (

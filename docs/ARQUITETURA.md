@@ -183,7 +183,7 @@ requisição HTTP esperando o processamento multimodal terminar.
 Monitoramento contínuo/alertas em tempo real (fora do fluxo de análise
 sob demanda) ficam como evolução futura — ver a seção de detecção de
 anomalias em séries temporais no
-[`RELATORIO_TECNICO_TECH_CHALLENGE.md`](RELATORIO_TECNICO_TECH_CHALLENGE.md),
+[`ANALISES_DISPONIVEIS.md`](ANALISES_DISPONIVEIS.md),
 que já cobre esse caso de forma independente do motor de regras.
 
 Diagramas adicionais (fluxo de autenticação, upload seguro, auditoria,
@@ -319,7 +319,6 @@ ADRs relevantes (0012, 0014, 0015).
 ## Documentação relacionada
 
 - [`README.md`](../README.md) — visão geral do repositório
-- [`docs/RELATORIO_TECNICO_TECH_CHALLENGE.md`](RELATORIO_TECNICO_TECH_CHALLENGE.md) — modelos aplicados por tipo de dado e resultados
 - [`docs/ANALISES_DISPONIVEIS.md`](ANALISES_DISPONIVEIS.md) — o que cada análise multimodal produz, em detalhe
 - [`docs/MANUAL_EXECUCAO.md`](MANUAL_EXECUCAO.md) — como rodar o sistema passo a passo
 - [`docs/MANUAL_INSTALACAO.md`](MANUAL_INSTALACAO.md) — como configurar cada integração real

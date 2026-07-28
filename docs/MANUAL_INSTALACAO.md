@@ -557,6 +557,5 @@ binário compilado para OpenPose) e `ffmpeg` está no `PATH`.
 ## Documentação relacionada
 
 - [`docs/MANUAL_EXECUCAO.md`](MANUAL_EXECUCAO.md) — fluxo de demonstração ponta a ponta usando os adaptadores locais.
-- [`docs/RELATORIO_TECNICO_TECH_CHALLENGE.md`](RELATORIO_TECNICO_TECH_CHALLENGE.md) — relatório técnico da entrega.
 - [`docs/adr/`](adr/) — decisões arquiteturais (ex.: ADR 0016, avaliação de componentes de nuvem gerenciados para vídeo).
 - [`README.md`](../README.md) — visão geral rápida do repositório.

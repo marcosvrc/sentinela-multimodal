@@ -178,7 +178,10 @@ setup: check-prereqs
 	@echo "$(BLUE)═══════════════════════════════════════════════════════════════════$(NC)"
 	@echo ""
 	@echo "$(YELLOW)Instalando dependências do backend (uv sync)...$(NC)"
-	@cd $(BACKEND) && uv sync && echo "$(GREEN)Backend OK$(NC)"
+	@cd $(BACKEND) && ( \
+		.venv/bin/python -c "import ultralytics" >/dev/null 2>&1 && \
+		uv sync --group vision || uv sync \
+	) && echo "$(GREEN)Backend OK$(NC)"
 	@echo ""
 	@echo "$(YELLOW)Instalando dependências do frontend (npm install)...$(NC)"
 	@cd $(FRONTEND) && npm install && echo "$(GREEN)Frontend OK$(NC)"

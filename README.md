@@ -63,14 +63,20 @@ que processa cada análise por modalidade, consolidação de risco (com LLM
 opcional), geração de laudo em PDF, auditoria imutável e controle de
 acesso (identidade local para dev/testes).
 
-A única nuvem gerenciada utilizada é o **Azure Cognitive Services**
-(Speech to Text, Language, Vision) — os adaptadores reais (Azure +
+As nuvens gerenciadas utilizadas são o **Azure Cognitive Services**
+(Speech to Text, Language, Vision) e o **Azure Health Data Services**
+(armazenamento DICOM de imagens médicas) — os adaptadores reais (Azure +
 OpenAI para o LLM de consolidação) são plugáveis e começam **desligados
 por padrão**: a aplicação roda 100% local, sem nenhuma credencial
 externa. O worker de vídeo (OpenPose + YOLOv8) é self-hosted, não um
 serviço de nuvem gerenciado — ver
 [ADR 0016](docs/adr/0016-avaliacao-componentes-aws-gerenciados.md) para o
 porquê.
+
+O **GPT-4 Vision** (OpenAI) roda a análise contextual clínica de imagem e
+vídeo (expressão, postura, sequência de eventos) de forma **independente**
+da feature flag do LLM de consolidação — basta `OPENAI_API_KEY`
+configurada no `.env`, sem precisar ligar nenhuma flag adicional.
 
 Gap conhecido e documentado: o fluxo é **assíncrono via fila** (análise
 sob demanda), não monitoramento contínuo em tempo real — decisão de
@@ -99,14 +105,16 @@ cada módulo): [`docs/ESTRUTURA_PROJETO.md`](docs/ESTRUTURA_PROJETO.md).
 
 | Camada | Tecnologia principal |
 | --- | --- |
-| Backend | Python 3.11+, FastAPI, SQLAlchemy, Alembic, Pydantic |
+| Backend | Python 3.11–3.12, FastAPI, SQLAlchemy, Alembic, Pydantic |
 | Frontend | React 18, TypeScript, Vite, TanStack Query |
 | Banco de dados | PostgreSQL 16 |
 | Fila de processamento | Tabela PostgreSQL (`SELECT ... FOR UPDATE SKIP LOCKED`) |
 | Armazenamento de mídia | Filesystem local (MVP), atrás de URL pré-assinada |
-| Nuvem gerenciada | Azure Cognitive Services (Speech, Language, Vision) |
+| Nuvem gerenciada | Azure Cognitive Services (Speech, Language, Vision) + Azure Health Data Services (DICOM) |
 | LLM | OpenAI (opcional) ou template determinístico local |
+| Visão contextual de imagem/vídeo | GPT-4 Vision (OpenAI), independente da flag de LLM |
 | Visão computacional de vídeo | OpenPose + YOLOv8, worker self-hosted em CPU |
+| Imagens médicas (DICOM) | pydicom + Azure Health Data Services (opcional) |
 | Testes | Pytest (backend), Vitest (frontend) |
 | Containerização | Docker + Docker Compose |
 | Gerenciador de pacotes | `uv` (backend), `npm` (frontend) |
@@ -134,13 +142,15 @@ graph TB
     speech["Azure AI Speech"]
     language["Azure AI Language"]
     vision["Azure AI Vision"]
-    openai["OpenAI GPT"]
+    dicom["Azure Health Data<br/>Services (DICOM)"]
+    openai["OpenAI GPT<br/>(LLM + GPT-4 Vision)"]
 
     profissional -->|cadastra pacientes,<br/>envia midias,<br/>revisa relatorios| sistema
     sistema -->|transcreve audio| speech
     sistema -->|analisa sentimento/termos| language
     sistema -->|reconhece rotulos de imagem| vision
-    sistema -->|solicita sintese estruturada| openai
+    sistema -->|armazena imagens medicas| dicom
+    sistema -->|sintese estruturada +<br/>analise contextual de imagem/video| openai
 ```
 
 Diagrama de contexto completo, diagrama de containers, sequência do
@@ -210,9 +220,12 @@ o fluxo ponta a ponta (paciente → análise → revisão → laudo em PDF).
 ### 7.4 Configurar integrações reais (Azure, OpenAI, visão computacional)
 
 Por padrão, tudo roda com adaptadores locais, sem nenhuma credencial
-externa. Para ligar Azure AI Speech/Language/Vision, OpenAI ou a visão
-computacional real de vídeo (OpenPose/YOLOv8):
-[`docs/MANUAL_INSTALACAO.md`](docs/MANUAL_INSTALACAO.md).
+externa. Para ligar Azure AI Speech/Language/Vision, Azure Health Data
+Services (DICOM), OpenAI (LLM + GPT-4 Vision) ou a visão computacional
+real de vídeo (OpenPose/YOLOv8):
+[`docs/MANUAL_INSTALACAO.md`](docs/MANUAL_INSTALACAO.md). Use
+`make check-env` para verificar rapidamente quais integrações já estão
+configuradas no `.env` atual.
 
 ### 7.5 Documentação interativa da API (Swagger / OpenAPI)
 
@@ -246,7 +259,11 @@ criação de análise multimodal, acompanhamento do processamento, revisão
 do relatório, auditoria e administração (usuários, regras clínicas,
 feature flags).
 
-Manual completo: [`docs/MANUAL_USO.md`](docs/MANUAL_USO.md).
+Manual completo: [`docs/MANUAL_USO.md`](docs/MANUAL_USO.md). Para o
+passo a passo de como cada valor da **tela de revisão da análise** é
+calculado (nível de risco, big numbers, termos clínicos, risco sugerido
+por IA): [`docs/ANALISES_DISPONIVEIS.md`](docs/ANALISES_DISPONIVEIS.md)
+seção 11.
 
 ---
 
@@ -258,18 +275,16 @@ completo de detecção de anomalia:
 
 | Análise | Resumo |
 | --- | --- |
-| Vídeo | OpenPose (pose articular) + YOLOv8 (detecção de objetos), self-hosted |
+| Vídeo | OpenPose (pose articular) + YOLOv8 (detecção de objetos), self-hosted; GPT-4 Vision (análise contextual/sequência de eventos, opcional) |
 | Áudio | DSP acústico determinístico (sempre ativo) + transcrição Azure AI Speech (opcional) |
-| Imagem | Categorização heurística (sempre ativa) + reconhecimento Azure AI Vision (opcional, com guardrail de relevância clínica) |
-| Texto | Extração de termos clínicos com negação/temporalidade/certeza (motor próprio) |
+| Imagem | Categorização heurística (sempre ativa) + reconhecimento Azure AI Vision (opcional) + GPT-4 Vision (análise contextual clínica, opcional) + DICOM (Azure Health Data Services, opcional) |
+| Texto | Extração de termos clínicos com negação/temporalidade/certeza — motor determinístico NegEx/ConText (método primário) |
 | Motor de regras | Único responsável pelo `risk_level` — determinístico, versionado, nunca influenciado por IA |
+| Risco assistido por IA | `assisted_risk_level`, calculado pelo LLM a partir dos achados multimodais — sempre exibido como sugestão complementar, nunca substitui o `risk_level` determinístico |
 | Detecção de anomalias | Séries temporais de sinais vitais, independente do motor de regras |
 
 Detalhamento completo, com todos os modelos, thresholds e exemplos:
 [`docs/ANALISES_DISPONIVEIS.md`](docs/ANALISES_DISPONIVEIS.md).
-
-Relatório técnico da entrega (Fase 4), com foco em resultados e
-evidências: [`docs/RELATORIO_TECNICO_TECH_CHALLENGE.md`](docs/RELATORIO_TECNICO_TECH_CHALLENGE.md).
 
 ---
 
@@ -277,9 +292,13 @@ evidências: [`docs/RELATORIO_TECNICO_TECH_CHALLENGE.md`](docs/RELATORIO_TECNICO
 
 | Comando | Descrição |
 | --- | --- |
-| `make setup` | Instala dependências (backend e frontend) |
-| `make dev` | Sobe o Postgres via Compose e orienta a subir API/frontend |
+| `make check-prereqs` | Verifica pré-requisitos instalados na máquina (Python, uv, Node, npm, Docker, Git, ffmpeg, Azure CLI) |
+| `make setup` | Instala dependências (backend e frontend), cria `.env` |
+| `make dev` | Sobe o Postgres via Compose e orienta a subir API/worker/frontend |
+| `make up` | Sobe tudo via Docker Compose (Postgres + API + worker + frontend) |
 | `make stop` | Derruba os containers do Compose |
+| `make logs` | Exibe logs dos containers em tempo real |
+| `make health` | Verifica se a API e o frontend estão respondendo |
 | `make format` | Formata backend (ruff) e frontend (prettier) |
 | `make lint` | Lint backend (ruff) e frontend (eslint) |
 | `make typecheck` | Checagem de tipos backend (mypy) e frontend (tsc) |
@@ -287,8 +306,9 @@ evidências: [`docs/RELATORIO_TECNICO_TECH_CHALLENGE.md`](docs/RELATORIO_TECNICO
 | `make test-integration` | Testes de integração (requer Postgres ativo) |
 | `make test-db-create` | Cria o banco de teste `sentinelhealth_test` (idempotente, rode uma vez após `compose-up`) |
 | `make test-db-migrate` | Aplica as migrations no banco de teste |
+| `make load-test` | Roda um teste de carga (`scenario=health` por padrão) |
 | `make build` | Build das imagens Docker |
-| `make check` | Validação local equivalente ao gate de PR (lint+typecheck+test) |
+| `make check` | Validação local equivalente ao gate de PR (lint+typecheck+test+regras) |
 | `make migrate` | Aplica migrations pendentes |
 | `make migration name="..."` | Cria uma nova migration Alembic |
 | `make rules-validate` | Valida os arquivos YAML de regras clínicas contra o schema |
@@ -296,9 +316,13 @@ evidências: [`docs/RELATORIO_TECNICO_TECH_CHALLENGE.md`](docs/RELATORIO_TECNICO
 | `make seed-dev-data` | Cria instituição e usuários de desenvolvimento |
 | `make seed-care-units` / `seed-employees` / `seed-patients` | Popula dados fictícios adicionais (idempotente) |
 | `make worker` | Roda uma iteração do worker do orquestrador |
+| `make worker-loop` | Roda o worker do orquestrador em loop contínuo |
 | `make codegen` | Gera `frontend/src/types/enums.generated.ts` a partir dos enums Python |
 | `make export-openapi` | Gera o snapshot `docs/contracts/openapi.json` |
 | `make compose-up` / `make compose-down` | Sobe/derruba os serviços do Compose |
+| `make check-env` | Verifica quais integrações reais estão configuradas (OpenAI, Azure Speech/Language/Vision/DICOM, YOLOv8, ffmpeg) |
+| `make setup-azure` | Cria recursos Azure Cognitive Services via CLI (Speech, Language, Vision) |
+| `make setup-yolo` | Instala o grupo de dependências `vision` (YOLOv8/ultralytics) |
 
 ---
 
@@ -362,8 +386,8 @@ Linux) e por integração (Azure/OpenAI/visão): ver as seções finais de
 | [`docs/MANUAL_EXECUCAO.md`](docs/MANUAL_EXECUCAO.md) | Primeira execução completa: seed, publicação de regras, demonstração ponta a ponta |
 | [`docs/MANUAL_INSTALACAO.md`](docs/MANUAL_INSTALACAO.md) | Configuração de cada integração real (Azure, OpenAI, visão computacional) |
 | [`docs/MANUAL_USO.md`](docs/MANUAL_USO.md) | Manual de uso do sistema, tela a tela |
+| [`docs/MANUAL_CAMPOS.md`](docs/MANUAL_CAMPOS.md) | Campos, regras de validação e o que cada tela armazena |
 | [`docs/ANALISES_DISPONIVEIS.md`](docs/ANALISES_DISPONIVEIS.md) | O que cada análise multimodal produz, em detalhe técnico |
-| [`docs/RELATORIO_TECNICO_TECH_CHALLENGE.md`](docs/RELATORIO_TECNICO_TECH_CHALLENGE.md) | Relatório técnico da entrega (Fase 4) |
 | [`docs/DATASETS_RECOMENDADOS.md`](docs/DATASETS_RECOMENDADOS.md) | Onde encontrar datasets públicos de áudio, vídeo e imagem para testes |
 | [`docs/ESCOPO_PROJETO.md`](docs/ESCOPO_PROJETO.md) | Escopo completo do produto |
 | [`docs/ESPECIFICACAO_FRONTEND.md`](docs/ESPECIFICACAO_FRONTEND.md) | Telas, design system e contratos de frontend |

@@ -20,7 +20,7 @@ const REGISTERED_SEX_OPTIONS = [
   { value: "", label: "Selecione" },
   { value: "feminino", label: "Feminino" },
   { value: "masculino", label: "Masculino" },
-  { value: "nao_informado", label: "Prefere nao informar" },
+  { value: "nao_informado", label: "Prefere não informar" },
 ];
 
 interface EditForm {
@@ -108,7 +108,7 @@ export function PatientEditPage() {
   }
 
   if (!subject || !patientId) {
-    return <EmptyState title="Configure o usuario de desenvolvimento primeiro." />;
+    return <EmptyState title="Configure o usuário de desenvolvimento primeiro." />;
   }
 
   if (patientQuery.isLoading) return <Skeleton rows={5} />;
@@ -141,7 +141,7 @@ export function PatientEditPage() {
         <Section title="Identificação" variant="plain">
           <TextField
             id="medical_record_number"
-            label="Identificador institucional / prontuario"
+            label="Identificador institucional / prontuário"
             required
             value={form.medical_record_number}
             onChange={(event) => updateField("medical_record_number", event.target.value)}

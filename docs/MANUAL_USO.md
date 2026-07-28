@@ -174,6 +174,11 @@ Depois de confirmado, o relatório e o PDF ficam disponíveis
 permanentemente — nenhuma edição posterior é permitida sem uma nova
 análise.
 
+**Como cada valor é calculado, passo a passo** (nível de risco, taxa
+conclusiva, big numbers do bloco multimodal, extração de termos clínicos,
+risco sugerido por IA e resumo explicativo): ver
+[`ANALISES_DISPONIVEIS.md`](ANALISES_DISPONIVEIS.md) seção 11.
+
 ---
 
 ## 7. Histórico de análises (`/analyses`)

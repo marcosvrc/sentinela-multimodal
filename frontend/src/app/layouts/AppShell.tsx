@@ -30,7 +30,7 @@ interface NavItemDef {
 const NAV_ITEMS: NavItemDef[] = [
   { to: "/patients", label: "Pacientes", icon: Users, permission: "patients" },
   { to: "/analyses/new", label: "Nova analise", icon: PlusCircle, permission: "analyses" },
-  { to: "/analyses", label: "Historico", icon: ClipboardList, permission: "analyses" },
+  { to: "/analyses", label: "Histórico", icon: ClipboardList, permission: "analyses" },
   { to: "/audit", label: "Auditoria", icon: ShieldCheck, permission: "audit" },
 ];
 
@@ -77,7 +77,7 @@ export function AppShell() {
         Pular para o conteudo principal
       </a>
 
-      <aside className={styles.sidebar} aria-label="Navegacao principal">
+      <aside className={styles.sidebar} aria-label="Navegação principal">
         <div className={styles.brand}>
           <Logo className={styles.brandIcon} />
           <span>SentinelHealth</span>
@@ -102,7 +102,7 @@ export function AppShell() {
               );
             })}
             {showAdminSubmenu && (
-              <NavGroup label="Administracao" icon={Settings} children={ADMIN_SUBMENU} />
+              <NavGroup label="Administração" icon={Settings} children={ADMIN_SUBMENU} />
             )}
           </ul>
         </nav>

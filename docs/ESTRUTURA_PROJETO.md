@@ -125,7 +125,6 @@ docs/
 ├── MANUAL_INSTALACAO.md                 Como configurar cada integração real (Azure, OpenAI, visão)
 ├── MANUAL_USO.md                        Manual de uso do sistema, tela a tela
 ├── ANALISES_DISPONIVEIS.md              O que cada análise multimodal produz, em detalhe
-├── RELATORIO_TECNICO_TECH_CHALLENGE.md  Relatório técnico da entrega (Fase 4)
 ├── DATASETS_RECOMENDADOS.md             Onde achar datasets públicos para teste
 ├── ESCOPO_PROJETO.md                    Escopo completo do produto
 ├── ESPECIFICACAO_FRONTEND.md            Telas, design system e contratos de frontend

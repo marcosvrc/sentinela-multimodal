@@ -3,10 +3,7 @@
 Este documento detalha **o que cada análise produz de fato** no sistema:
 os modelos/algoritmos aplicados por tipo de dado, o motor de regras
 determinístico que calcula o risco clínico, e a detecção de anomalias em
-série temporal. Complementa
-[`RELATORIO_TECNICO_TECH_CHALLENGE.md`](RELATORIO_TECNICO_TECH_CHALLENGE.md)
-(que foca no relato da entrega) com mais detalhe técnico e exemplos
-numéricos completos.
+série temporal.
 
 **Princípio central, repetido em todo este documento:** o risco clínico
 **nunca** vem de um modelo de IA. Todo `risk_level` exibido no sistema é
@@ -336,10 +333,203 @@ real é evolução futura, não implementada hoje.
 
 ---
 
+## 11. Como interpretar a tela de revisão da análise (passo a passo)
+
+Esta seção explica **exatamente como cada número e cada texto exibido em
+`/analyses/:id/review` é calculado**, na ordem em que aparecem na tela.
+Objetivo: um profissional de saúde conseguir olhar para qualquer valor da
+tela e saber de onde ele vem, sem precisar adivinhar.
+
+A tela é dividida em três blocos, sinalizados por uma faixa colorida à
+esquerda:
+
+| Bloco | Cor | Conteúdo | Influencia o `risk_level`? |
+| --- | --- | --- | --- |
+| A — Dados clínicos estruturados | Verde | Sinais vitais + motor de regras | **Sim — é a única fonte** |
+| B — Dados multimodais | Azul | Áudio/vídeo/imagem/texto processados | Não |
+| C — Análise consolidada (IA) | Azul-escuro | Síntese e sugestão da IA | Não |
+
+### 11.1 Bloco A — Dados clínicos estruturados
+
+**Nível de risco (1–6) e classificação.** Vem de
+`content.calculated_risk`, calculado em
+`app.risk_consolidation.engine.consolidate_code_evaluations`
+(`backend/app/risk_consolidation/engine.py`). O cálculo, passo a passo:
+
+1. Para cada código de sinal vital informado nesta análise (ex.:
+   `blood_pressure`, `spo2`), o motor busca o conjunto de regras
+   **publicado** vigente para aquele código e avalia cada condição da
+   regra (`app.rules_engine.engine.evaluate_rule_set`) contra o valor
+   informado.
+2. Se **mais de uma regra do mesmo conjunto** casar com o valor (não
+   deveria ocorrer em um conjunto bem desenhado, mas o motor não assume
+   isso), vence o `risk_level` **mais alto** — postura conservadora de
+   segurança do paciente.
+3. Se a análise tem **mais de um sinal vital** (ex.: pressão arterial +
+   SpO2), cada um produz seu próprio resultado, e o mesmo critério se
+   repete entre eles: o `risk_level` mais alto entre todos os sinais
+   avaliados é o que aparece como "Nível de risco" da análise.
+4. O resultado é **`Inconclusivo`** (não um nível de risco "seguro") em
+   qualquer um destes casos: nenhum dado clínico foi informado, falta uma
+   entrada obrigatória exigida pelo conjunto de regras, o conjunto de
+   regras para aquele código ainda está em rascunho (não publicado), ou
+   nenhuma regra publicada casou com o valor informado. **Inconclusivo
+   nunca significa "normal".**
+
+**Dados informados.** Contagem simples: `Object.keys(structured_clinical_inputs).length`
+— o número de **sinais vitais diferentes** informados nesta análise (não
+o número de campos dentro de cada sinal; ex.: pressão arterial conta como
+1, mesmo tendo sistólica + diastólica).
+
+**Resultado (Conclusivo/Inconclusivo).** Mesmo cálculo do "Nível de
+risco" acima — `Conclusivo` quando `outcome == "MATCHED"` (ao menos uma
+regra publicada casou), `Inconclusivo` em qualquer outro caso.
+
+**Taxa conclusiva.** Estatística **agregada de toda a instituição**
+(não apenas desta análise), calculada em
+`app.risk_consolidation.service.get_analysis_consolidation_stats`
+(`backend/app/risk_consolidation/service.py`): conta todas as análises da
+instituição com risco já consolidado, calcula `(conclusivas / total) × 100`,
+sem filtro de período — é o histórico completo. Uma taxa baixa geralmente
+indica falta de regras publicadas para os sinais mais usados, ou muitas
+análises submetidas sem dados clínicos estruturados.
+
+**Achados determinísticos.** Lista, um item por sinal vital avaliado, com
+o código do sinal, o resultado (`Classificado`/`Inconclusivo`), o rótulo
+da regra que casou (ex.: "Hipertensão estágio 2") e — quando inconclusivo
+— o motivo exato (dado obrigatório ausente, regra não publicada, ou
+nenhuma regra casou com o valor).
+
+### 11.2 Bloco B — Dados multimodais
+
+**Big numbers (linha de cima):**
+
+| Card | Cálculo |
+| --- | --- |
+| Modalidades | Quantidade de tipos de dado (áudio/vídeo/imagem/texto) com ao menos um achado nesta análise |
+| Com relevância clínica | Quantidade de modalidades com ao menos um achado que passou pelo guardrail de relevância clínica (ver abaixo) |
+| Termos clínicos | Quantidade de observações com `term` + `extraction_method` presentes (ver extração de termos abaixo) |
+| Hipóteses | `content.assisted_hypotheses.length` — hipóteses geradas pelos processadores (nunca pela IA generativa) |
+| Qualidade geral | **Pior** `quality_state` entre todos os achados técnicos (`ORIGINAL_DATA`) de todas as modalidades — uma única modalidade com qualidade `INSUFFICIENT` "arrasta" o indicador geral para baixo, mesmo que as demais estejam `ADEQUATE` |
+
+**Guardrail de relevância clínica** (decide "Com relevância clínica" e
+também filtra o que entra no resumo final): função
+`is_clinically_relevant` em `app.processors.clinical_relevance`
+(`backend/app/processors/clinical_relevance.py`). Regra por tipo de
+achado:
+
+- Hipótese assistida (qualquer modalidade) → **sempre** relevante.
+- Termo clínico extraído do texto/transcrição, ou métrica acústica do
+  áudio (energia vocal, pausas) → **sempre** relevante (só existem
+  quando algo real foi encontrado).
+- Rótulo do Azure AI Vision → relevante **somente** se marcado como
+  `RELEVANT` pelo próprio guardrail de imagem (seção 3.1) — nunca
+  `NOT_RELEVANT`/`UNDETERMINED`.
+- Sentimento (Azure AI Language) ou categorização heurística de imagem
+  (foto/documento/radiológica) → **nunca** contam por si só, são sempre
+  contextuais.
+- Qualidade estrutural pura (`ORIGINAL_DATA`, ex.: "Imagem 300×300") →
+  **nunca** conta — é metadado técnico, não fala do conteúdo.
+
+**Extração de termos clínicos** (tabela "Termos clínicos e observações").
+Método primário: **LLM** (`extract_clinical_terms`, GPT-4o) — envia o
+texto e recebe termo + negação + temporalidade + certeza + experienciador
+já estruturados. Se a chamada ao LLM falhar (rede, credencial), o sistema
+cai automaticamente para o motor **NegEx/ConText determinístico**
+(`app.clinical_nlp.text_analysis`), que funciona assim:
+
+1. Varre o texto por frase (segmentado por `. ! ? ; \n`) buscando termos
+   de uma lista curada (ex.: "dor torácica", "dispneia", "febre").
+2. Para cada termo encontrado, procura "pistas" (palavras-chave) **antes**
+   do termo, dentro da mesma frase: `nega`, `sem`, `ausência de` →
+   negação. Conjunções como "mas"/"porém" interrompem esse alcance —
+   ex.: "nega febre, mas relata dor" não marca "dor" como negado.
+3. Certeza: `suspeita de` → Suspeito; `possível` → Possível; senão
+   Confirmado (padrão).
+4. Temporalidade: `ontem`/`histórico de` → Passado; senão Atual.
+5. Experienciador: pistas de parentesco (`mãe`, `familiar`) → Familiar;
+   senão Paciente.
+
+Cada linha da tabela é uma combinação única de termo+negação+temporalidade
++certeza+experienciador — ocorrências repetidas da mesma combinação são
+agrupadas e contadas ("2x", "3x"), não duplicadas.
+
+**Qualidade técnica por modalidade** (coluna da tabela de detalhamento
+técnico), thresholds exatos em `app.processors.quality`
+(`backend/app/processors/quality.py`):
+
+| Modalidade | Insuficiente | Moderada | Adequada |
+| --- | --- | --- | --- |
+| Imagem (menor dimensão) | < 200 px | 200–479 px | ≥ 480 px |
+| Áudio / Vídeo (duração) | < 1,0 s | 1,0–2,9 s | ≥ 3,0 s |
+| Texto (caracteres) | < 20 (ou vazio = Inválida) | 20–59 | ≥ 60 |
+
+Duração/dimensão que não pôde ser determinada no arquivo é classificada
+como `Moderada` por padrão (nunca `Adequada` por omissão).
+
+### 11.3 Bloco C — Análise consolidada (IA)
+
+**Risco sugerido (assisted_risk).** Calculado por uma chamada **separada**
+ao LLM (`assess_modality_risk`, prompt dedicado em
+`app.integrations.llm.openai_adapter`), executada em
+`consolidate_analysis_risk` (`backend/app/risk_consolidation/service.py`)
+**antes** do resumo explicativo. Recebe como entrada: os achados
+multimodais clinicamente relevantes desta análise (ou, se não houver
+nenhum, um resumo sintético dos próprios dados clínicos estruturados) e o
+`risk_level`/`outcome` **determinístico já calculado**, apenas como
+contexto — o prompt deixa explícito que o LLM pode sugerir um nível
+diferente se os achados multimodais justificarem, mas nunca pode
+substituir ou apagar o resultado determinístico. `uncertainty_note` é
+texto livre gerado pelo próprio modelo (o backend não valida seu
+conteúdo, apenas garante que o campo existe no schema). O valor é
+clampado entre 1 e 6 no código antes de ser salvo, mesmo que o modelo
+devolva algo fora da faixa.
+
+Quando o risco sugerido diverge do determinístico, trate ambos como
+informações complementares: o determinístico é a classificação **oficial**
+usada em todo o restante do sistema (protocolo, alertas, relatório); o
+sugerido é um alerta de que os dados multimodais podem indicar algo que
+os sinais vitais isolados não capturam — vale a pena revisar a
+justificativa antes de decidir.
+
+**Resumo explicativo.** Chamada **diferente** da anterior
+(`summarize`, mesmo módulo), que recebe o risco determinístico, os
+achados de qualidade de cada modalidade, até 15 achados multimodais
+clinicamente relevantes, e o resultado do risco sugerido acima (para
+poder mencionar uma divergência explicitamente, ex.: "o risco
+determinístico é nível 1, porém a análise assistida por IA sugere nível 4
+devido a..."). O prompt proíbe explicitamente o modelo de alterar o
+`risk_level` — sua única função é explicar em português por que o
+resultado já calculado chegou a esse valor. Nunca recebe texto livre bruto
+do paciente, apenas os campos já estruturados acima.
+
+**Apoio à análise clínica** (botão "Analisar dados clínicos"). Terceira
+chamada de LLM, independente das duas anteriores, disparada sob demanda
+(ou automaticamente, se a feature flag `auto_clinical_support_enabled`
+estiver ligada). Filtra os achados pelo mesmo guardrail de relevância
+clínica da seção 11.2 antes de montar o prompt, e devolve quatro textos
+separados: visão clínica, causas prováveis, direcionamento sugerido e nota
+de incerteza. Fica salvo em `Report.clinical_support_summary` — sobrevive
+à reabertura da tela, mas cada novo clique gera uma versão nova a partir
+do estado atual dos achados.
+
+### 11.4 Resumo por modalidade e correlação final
+
+A tabela "Resumo por modalidade" (quando exibida) e o texto de correlação
+final são **determinísticos** — não dependem de LLM nem de nuvem, sempre
+disponíveis. Calculados em `app.reports.builder._compute_modality_summary`:
+para cada modalidade presente na análise, cruza a pior qualidade técnica
+(`ORIGINAL_DATA`) com a relevância clínica (mesma regra da seção 11.2) e
+decide se a modalidade entra na correlação final — só entram modalidades
+com ao menos um achado clinicamente relevante confirmado; qualidade
+técnica isoladamente nunca é suficiente.
+
+---
+
 ## Documentação relacionada
 
-- [`docs/RELATORIO_TECNICO_TECH_CHALLENGE.md`](RELATORIO_TECNICO_TECH_CHALLENGE.md) — relatório técnico da entrega
 - [`docs/MANUAL_USO.md`](MANUAL_USO.md) — como usar cada análise pela interface
+- [`docs/MANUAL_CAMPOS.md`](MANUAL_CAMPOS.md) — campos e regras de cada tela, incluindo a de revisão
 - [`docs/MANUAL_INSTALACAO.md`](MANUAL_INSTALACAO.md) — como ligar cada integração real (Azure, OpenAI, visão)
 - [`docs/ARQUITETURA.md`](ARQUITETURA.md) — arquitetura do sistema
 - [`docs/ESCOPO_PROJETO.md`](ESCOPO_PROJETO.md) — escopo completo do produto

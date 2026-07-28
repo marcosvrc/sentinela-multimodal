@@ -57,7 +57,7 @@ export function PatientDetailPage() {
   const bmi = patient ? computeBmi(patient.height_cm, weightKg) : null;
 
   if (!subject || !patientId) {
-    return <EmptyState title="Configure o usuario de desenvolvimento primeiro." />;
+    return <EmptyState title="Configure o usuário de desenvolvimento primeiro." />;
   }
 
   if (patientQuery.isLoading) return <Skeleton rows={4} />;
@@ -161,7 +161,7 @@ export function PatientDetailPage() {
             />
           )}
           {observationsQuery.isSuccess && observationsQuery.data.length === 0 && (
-            <EmptyState title="Nenhuma observacao registrada ainda." />
+            <EmptyState title="Nenhuma observação registrada ainda." />
           )}
           {observationsQuery.isSuccess && observationsQuery.data.length > 0 && (
             <>
@@ -181,7 +181,7 @@ export function PatientDetailPage() {
 
       <Modal
         open={formOpen}
-        title="Registrar observacao clinica"
+        title="Registrar observação clínica"
         onClose={() => setFormOpen(false)}
         size="md"
       >

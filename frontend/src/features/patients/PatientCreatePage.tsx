@@ -17,7 +17,7 @@ const REGISTERED_SEX_OPTIONS = [
   { value: "", label: "Selecione" },
   { value: "feminino", label: "Feminino" },
   { value: "masculino", label: "Masculino" },
-  { value: "nao_informado", label: "Prefere nao informar" },
+  { value: "nao_informado", label: "Prefere não informar" },
 ];
 
 const EMPTY_FORM: PatientCreateInput = {
@@ -65,7 +65,7 @@ export function PatientCreatePage() {
     <>
       <PageHeader
         title="Novo paciente"
-        description="Identificacao, contato e informacoes clinicas relevantes."
+        description="Identificação, contato e informações clínicas relevantes."
       />
 
       {!subject && <p role="alert">Configure o usuario de desenvolvimento primeiro.</p>}
@@ -81,7 +81,7 @@ export function PatientCreatePage() {
         <Section title="Identificação" variant="plain">
           <TextField
             id="medical_record_number"
-            label="Identificador institucional / prontuario"
+            label="Identificador institucional / prontuário"
             required
             value={form.medical_record_number}
             onChange={(event) => updateField("medical_record_number", event.target.value)}

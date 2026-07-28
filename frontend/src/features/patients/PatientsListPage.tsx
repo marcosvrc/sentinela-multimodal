@@ -127,7 +127,7 @@ export function PatientsListPage() {
         patient.has_analyses ? (
           <Link
             to={`/analyses?patientId=${patient.id}`}
-            title="Ver historico de analises deste paciente"
+            title="Ver histórico de análises deste paciente"
             aria-label={`Ver historico de analises de ${patient.full_name}`}
           >
             <ClipboardList size={18} strokeWidth={2} aria-hidden="true" />
@@ -172,7 +172,7 @@ export function PatientsListPage() {
       />
 
       {!subject && (
-        <EmptyState title="Configure o usuario de desenvolvimento acima para continuar." />
+        <EmptyState title="Configure o usuário de desenvolvimento acima para continuar." />
       )}
 
       {subject && (
@@ -187,7 +187,7 @@ export function PatientsListPage() {
           >
             <TextField
               id="patient-search"
-              label="Buscar por nome ou prontuario"
+              label="Buscar por nome ou prontuário"
               placeholder="Ex.: Maria Souza ou 000123"
               value={searchInput}
               onChange={(event) => {

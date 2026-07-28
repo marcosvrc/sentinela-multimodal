@@ -85,7 +85,7 @@ export function EmployeeSearchField({
           onChange={(event) => setTerm(event.target.value)}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          placeholder="Buscar funcionario por nome"
+          placeholder="Buscar funcionário por nome"
           autoComplete="off"
           role="combobox"
           aria-expanded={showResults}
@@ -104,7 +104,7 @@ export function EmployeeSearchField({
               </li>
             )}
             {query.isSuccess && matches.length === 0 && (
-              <li className={styles.resultItemMuted}>Nenhum funcionario encontrado.</li>
+              <li className={styles.resultItemMuted}>Nenhum funcionário encontrado.</li>
             )}
             {query.isSuccess &&
               matches.map((employee) => (

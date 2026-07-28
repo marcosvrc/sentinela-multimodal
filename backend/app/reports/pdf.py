@@ -16,11 +16,55 @@ from __future__ import annotations
 import io
 from datetime import datetime
 
+from reportlab.graphics.shapes import Drawing, PolyLine, Rect
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+# Cor de marca fixa para impressao (equivalente a `--color-primary-600` em
+# frontend/src/styles/tokens.css) - o PDF nao tem `currentColor`/tema, por
+# isso um valor hex fixo em vez de reaproveitar a variavel CSS.
+_BRAND_COLOR_HEX = "#1c8a4e"
+
+
+def _build_logo_drawing(size: float = 28) -> Drawing:
+    """Recria em `reportlab.graphics` o mesmo simbolo de marca do frontend
+    (`frontend/src/components/ui/Logo.tsx`): um pulso/onda de sinal vital
+    dentro de um quadrado arredondado - referencia visual a "sentinela"
+    (vigilancia) + "health" (sinal clinico). Mesma geometria do SVG
+    original (viewBox 32x32), redesenhada com as formas nativas do
+    reportlab (sem dependencia de rasterizador SVG externo)."""
+    scale = size / 32
+    drawing = Drawing(size, size)
+    drawing.add(
+        Rect(
+            0, 0, size, size,
+            rx=8 * scale, ry=8 * scale,
+            fillColor=colors.HexColor(_BRAND_COLOR_HEX),
+            fillOpacity=0.12,
+            strokeColor=None,
+        )
+    )
+    # Pontos do path original "M6 17h4l2.5-5 3 9 2.5-6H26", com y invertido
+    # (SVG cresce para baixo; reportlab para cima: y' = 32 - y) e escalado.
+    points_svg_xy = [
+        (6, 17), (10, 17), (12.5, 12), (15.5, 21), (18, 15), (26, 15),
+    ]
+    flat_points: list[float] = []
+    for x, y in points_svg_xy:
+        flat_points.extend([x * scale, (32 - y) * scale])
+    drawing.add(
+        PolyLine(
+            flat_points,
+            strokeColor=colors.HexColor(_BRAND_COLOR_HEX),
+            strokeWidth=2.2 * scale,
+            strokeLineCap=1,  # round
+            strokeLineJoin=1,  # round
+        )
+    )
+    return drawing
 
 
 def _format_datetime(value: str | None) -> str:
@@ -114,6 +158,50 @@ def _experiencer_label(v: str) -> str:
 _REPORT_STATE_LABELS = {"DRAFT": "Rascunho", "CONFIRMED": "Confirmado"}
 
 
+def _confidence_summary(details: dict) -> str:
+    """Resume, em uma unica celula, o grau de confianca ja calculado pelo
+    modelo/servico real por tras do achado (nunca inventado aqui) -
+    sentimento (Azure AI Language), rotulos de imagem (Azure AI Vision) e
+    visao computacional de video (YOLOv8/OpenPose). Achados sem nenhum
+    modelo real por tras (heuristicas, NegEx/ConText, GPT-4 Vision textual)
+    retornam "-": nao ha confianca de modelo real a reportar (mesmo
+    principio documentado em `app.clinical_nlp.text_analysis`)."""
+    sentiment = details.get("sentiment")
+    scores = details.get("scores")
+    if sentiment and isinstance(scores, dict):
+        score_key = {
+            "NEGATIVE": "negative", "POSITIVE": "positive", "MIXED": "mixed",
+        }.get(sentiment, "neutral")
+        value = scores.get(score_key)
+        if isinstance(value, (int, float)):
+            return f"{round(value * 100)}%"
+
+    labels = details.get("labels")
+    if isinstance(labels, list) and labels:
+        confidences = [item["confidence"] for item in labels if isinstance(item.get("confidence"), (int, float))]
+        if confidences:
+            return f"média {round(sum(confidences) / len(confidences))}%"
+
+    if details.get("provider") == "openpose_yolov8":
+        parts = []
+        detection_findings = details.get("detection_findings") or []
+        if detection_findings:
+            confidences = [d["confidence"] for d in detection_findings if isinstance(d.get("confidence"), (int, float))]
+            if confidences:
+                parts.append(f"objetos {round(sum(confidences) / len(confidences) * 100)}%")
+        pose_findings = details.get("pose_findings") or []
+        pose_confidences = [
+            p["mean_keypoint_confidence"] for p in pose_findings
+            if isinstance(p.get("mean_keypoint_confidence"), (int, float))
+        ]
+        if pose_confidences:
+            parts.append(f"pose {round(sum(pose_confidences) / len(pose_confidences) * 100)}%")
+        if parts:
+            return " · ".join(parts)
+
+    return "-"
+
+
 def render_report_pdf(content: dict) -> bytes:
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -135,7 +223,25 @@ def render_report_pdf(content: dict) -> bytes:
     story = []
 
     # === CABEÇALHO ===
-    story.append(Paragraph("SentinelHealth - Relatório de Análise Multimodal", styles["Title"]))
+    # Icone de marca (mesmo simbolo do frontend, ver `_build_logo_drawing`)
+    # ao lado do titulo - tabela de 1 linha/2 colunas so para alinhar
+    # verticalmente o desenho vetorial com o texto (reportlab nao tem
+    # flexbox; `Table` e o jeito idiomatico de alinhar um `Drawing` com um
+    # `Paragraph` na mesma linha).
+    header_table = Table(
+        [[
+            _build_logo_drawing(size=30),
+            Paragraph("SentinelHealth - Relatório de Análise Multimodal", styles["Title"]),
+        ]],
+        colWidths=[1.2 * cm, 15.8 * cm],
+    )
+    header_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (0, 0), (0, 0), "LEFT"),
+        ("LEFTPADDING", (0, 0), (0, 0), 0),
+        ("LEFTPADDING", (1, 0), (1, 0), 6),
+    ]))
+    story.append(header_table)
     story.append(Paragraph(
         "Sistema de apoio a decisão clínica. Não realiza diagnóstico autônomo; toda "
         "classificação está sujeita a revisão profissional.", small,
@@ -299,14 +405,16 @@ def render_report_pdf(content: dict) -> bytes:
             Paragraph("<b>Modalidade</b>", cell_style),
             Paragraph("<b>Data/hora</b>", cell_style),
             Paragraph("<b>Observação</b>", cell_style),
+            Paragraph("<b>Confiança</b>", cell_style),
         ]]
         for item in other_obs:
             obs_rows.append([
                 Paragraph(_modality_label(item["modality_type"]), cell_style),
                 Paragraph(_format_datetime(item["observed_at"]), cell_style),
                 Paragraph(item["summary"], cell_style),
+                Paragraph(_confidence_summary(item.get("details") or {}), cell_style),
             ])
-        table = Table(obs_rows, colWidths=[2.5 * cm, 3 * cm, 10.5 * cm])
+        table = Table(obs_rows, colWidths=[2.2 * cm, 2.5 * cm, 8.8 * cm, 2.5 * cm])
         table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
             ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
