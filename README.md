@@ -1,5 +1,18 @@
 # SentinelHealth
 
+[![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-D71F00?style=flat&logo=python&logoColor=white)](https://www.sqlalchemy.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![React](https://img.shields.io/badge/React-18.3-61DAFB?style=flat&logo=react&logoColor=black)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?style=flat&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat&logo=docker&logoColor=white)](https://docs.docker.com/compose/)
+[![Azure](https://img.shields.io/badge/Azure-Cognitive%20Services-0078D4?style=flat&logo=microsoftazure&logoColor=white)](https://azure.microsoft.com/products/ai-services)
+[![OpenAI](https://img.shields.io/badge/OpenAI-GPT-412991?style=flat&logo=openai&logoColor=white)](https://platform.openai.com/)
+[![Pytest](https://img.shields.io/badge/Pytest-backend-0A9EDC?style=flat&logo=pytest&logoColor=white)](https://docs.pytest.org/)
+[![Vitest](https://img.shields.io/badge/Vitest-frontend-6E9F18?style=flat&logo=vitest&logoColor=white)](https://vitest.dev/)
+
 Sistema de apoio a análises clínicas com inteligência artificial
 multimodal (áudio, vídeo, imagem e texto). **Não realiza diagnóstico
 autônomo**: o risco clínico é sempre calculado por um motor de regras
@@ -8,6 +21,8 @@ e hipóteses, sujeitas a revisão profissional antes de qualquer relatório
 se tornar definitivo.
 
 Projeto desenvolvido para o **Tech Challenge — Fase 4** (FIAP).
+
+> **Entrega:** Pós-Graduação **IA para Devs — FIAP / Fase 4** — Fernanda Valdevino e Marcos Vinício.
 
 ---
 

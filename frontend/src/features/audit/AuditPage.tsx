@@ -114,7 +114,17 @@ export function AuditPage() {
               onChange={(event) => setActionFilter(event.target.value)}
               placeholder="ex: ANALYSIS_CREATE"
             />
-            <Button type="submit" variant="secondary">
+            <Button
+              type="submit"
+              variant="secondary"
+              // `TextField`/`FormField` tem `margin-bottom: var(--space-4)`
+              // no wrapper do campo (pensado para empilhamento vertical em
+              // formularios normais); o `Button` nao tem essa margem, e
+              // `alignItems: flex-end` alinha pela borda externa (incluindo
+              // margem) de cada item da linha - sem compensar, o botao fica
+              // desenhado visualmente mais baixo que a base dos inputs.
+              style={{ marginBottom: "var(--space-4)" }}
+            >
               <Filter size={14} strokeWidth={2} aria-hidden="true" />
               Filtrar
             </Button>

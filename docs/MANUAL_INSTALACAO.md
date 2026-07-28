@@ -14,9 +14,9 @@ configurar, e onde, para ligar cada peça real**.
 > de verdade (ex.: só o OpenAI, ou só o Azure Speech, ou tudo).
 
 A única nuvem gerenciada utilizada por este projeto é a **Microsoft
-Azure** (Cognitive Services). Não há infraestrutura provisionada (o MVP
-roda 100% local via Docker Compose) e não há dependência de nenhum
-serviço AWS.
+Azure** (Cognitive Services + Health Data Services). Não há
+infraestrutura provisionada (o MVP roda 100% local via Docker Compose) e
+não há dependência de nenhum serviço AWS.
 
 ---
 
@@ -31,14 +31,15 @@ serviço AWS.
 7. [Armazenamento de mídia](#7-armazenamento-de-mídia)
 8. [Fila de processamento](#8-fila-de-processamento)
 9. [Transcrição de áudio (Azure AI Speech)](#9-transcrição-de-áudio-azure-ai-speech)
-10. [Visão computacional de vídeo (OpenPose/YOLOv8)](#10-visão-computacional-de-vídeo-openposeyolov8)
-11. [Tela de feature flags (`/admin/feature-flags`)](#11-tela-de-feature-flags-adminfeature-flags)
-12. [Identidade](#12-identidade)
-13. [Rate limiting e segurança de sessão](#13-rate-limiting-e-segurança-de-sessão)
-14. [Referência completa de variáveis de ambiente](#14-referência-completa-de-variáveis-de-ambiente)
-15. [Migrations, seed e primeira execução](#15-migrations-seed-e-primeira-execução)
-16. [Checklist para um teste real de ponta a ponta](#16-checklist-para-um-teste-real-de-ponta-a-ponta)
-17. [Solução de problemas](#17-solução-de-problemas)
+10. [Imagens médicas DICOM (Azure Health Data Services)](#10-imagens-médicas-dicom-azure-health-data-services)
+11. [Visão computacional de vídeo (OpenPose/YOLOv8)](#11-visão-computacional-de-vídeo-openposeyolov8)
+12. [Tela de feature flags (`/admin/feature-flags`)](#12-tela-de-feature-flags-adminfeature-flags)
+13. [Identidade](#13-identidade)
+14. [Rate limiting e segurança de sessão](#14-rate-limiting-e-segurança-de-sessão)
+15. [Referência completa de variáveis de ambiente](#15-referência-completa-de-variáveis-de-ambiente)
+16. [Migrations, seed e primeira execução](#16-migrations-seed-e-primeira-execução)
+17. [Checklist para um teste real de ponta a ponta](#17-checklist-para-um-teste-real-de-ponta-a-ponta)
+18. [Solução de problemas](#18-solução-de-problemas)
 
 ---
 
@@ -59,6 +60,7 @@ enriquecimentos opcionais, ligar um toggle na tela de administração.
 | Transcrição de áudio | `.env`: `TRANSCRIPTION_PROVIDER=AZURE_SPEECH` | Retorna "indisponível" | Azure AI Speech |
 | Análise de sentimento/termos (texto/áudio) | feature flag `sentiment_analysis_enabled` | Retorna "indisponível" | Azure AI Language |
 | Reconhecimento de imagem | feature flag `image_recognition_enabled` | Retorna "indisponível" | Azure AI Vision |
+| Armazenamento de imagens médicas DICOM | feature flag `dicom_service_enabled` | Não envia a nenhum serviço externo | Azure Health Data Services (DICOM Service) |
 | Visão computacional (vídeo) | `.env`: `VISION_PROVIDER=OPENPOSE_YOLOV8` + feature flags `vision_pose_enabled`/`vision_detection_enabled` | Retorna "indisponível" | Worker self-hosted (OpenPose + YOLOv8) |
 | Armazenamento de mídia | — (único adaptador) | Filesystem local | — |
 | Fila de processamento | — (único adaptador) | Tabela PostgreSQL | — |
@@ -79,7 +81,7 @@ inventar uma transcrição, um resumo de IA ou uma detecção de pose.
 | Node.js | 22+ | Frontend (Vite) |
 | npm | atual | Vem com o Node |
 | Docker + Docker Compose | atual | Postgres local e/ou containers da aplicação |
-| `ffmpeg` | atual | Só para visão computacional de vídeo real (seção 10) |
+| `ffmpeg` | atual | Só para visão computacional de vídeo real (seção 11) |
 
 ```bash
 python3 --version
@@ -184,13 +186,13 @@ serviço `postgres` da rede interna do Compose — os demais valores
 (OpenAI, Azure etc.) vêm do seu `.env` normalmente.
 
 Migrations e seed de regras clínicas **não** sobem automaticamente com os
-containers — rode-os manualmente (seção 15) mesmo usando este modo.
+containers — rode-os manualmente (seção 16) mesmo usando este modo.
 
 ### 5.3 Imagem de worker de visão computacional
 
 O worker de vídeo (OpenPose/YOLOv8) precisa de dependências pesadas
 (`ultralytics`, binário do OpenPose, `ffmpeg`) que não fazem parte da
-imagem genérica do backend — ver seção 10. Uma imagem Docker dedicada
+imagem genérica do backend — ver seção 11. Uma imagem Docker dedicada
 para esse worker ainda não existe neste projeto; para testar visão
 computacional real hoje, instale as dependências no ambiente local (fora
 de container) em vez de esperar uma imagem separada.
@@ -228,7 +230,7 @@ de volta para o template local sem avisar.
 **Custo:** cada consolidação de análise faz uma chamada de chat completion
 por análise confirmada. Monitore uso pelo dashboard da OpenAI; não há
 limite de taxa próprio configurado no lado do SentinelHealth para chamadas
-ao LLM (o rate limiting da seção 13 protege a API do SentinelHealth, não
+ao LLM (o rate limiting da seção 14 protege a API do SentinelHealth, não
 o consumo da API da OpenAI).
 
 ---
@@ -259,7 +261,7 @@ O único adaptador de fila deste MVP é uma tabela PostgreSQL
 variável de ambiente liga um provedor alternativo hoje.
 
 Para processar a fila, é preciso ter o worker do orquestrador em execução
-(ver seção 15 ou o serviço `worker` do `compose.yaml`) — sem ele, toda
+(ver seção 16 ou o serviço `worker` do `compose.yaml`) — sem ele, toda
 análise submetida fica parada em `QUEUED` indefinidamente.
 
 ---
@@ -313,7 +315,61 @@ risco clínico nem entra no prompt de consolidação de risco.
 
 ---
 
-## 10. Visão computacional de vídeo (OpenPose/YOLOv8)
+## 10. Imagens médicas DICOM (Azure Health Data Services)
+
+```env
+AZURE_DICOM_ENDPOINT=https://<seu-workspace>-<seu-servico>.dicom.azurehealthcareapis.com
+AZURE_DICOM_TENANT_ID=...
+AZURE_DICOM_CLIENT_ID=...
+AZURE_DICOM_CLIENT_SECRET=...
+```
+
+Diferente das demais integrações Azure deste manual (que usam uma chave
+de API simples), este adaptador autentica via **Microsoft Entra ID**
+(OAuth2/Service Principal) — exige criar um recurso de nível mais alto
+(um Health Data Services workspace com um serviço DICOM dentro dele) e
+registrar uma identidade de aplicação com permissão para usá-lo.
+
+Passos para criar o recurso no Azure:
+
+1. No [Azure Portal](https://portal.azure.com), crie um recurso
+   **Azure Health Data Services** (workspace). Dentro do workspace, crie
+   um serviço do tipo **DICOM service**.
+2. Anote a **URL do serviço DICOM** (algo como
+   `https://<workspace>-<servico>.dicom.azurehealthcareapis.com`) — vai em
+   `AZURE_DICOM_ENDPOINT`.
+3. Em **Microsoft Entra ID** (Azure AD), crie um **App registration**
+   (Service Principal). Em **Certificates & secrets**, gere um **client
+   secret** novo.
+4. Anote o **Application (client) ID**, o **Directory (tenant) ID** (na
+   página de visão geral do App registration) e o **valor do client
+   secret** gerado no passo anterior — vão em `AZURE_DICOM_CLIENT_ID`,
+   `AZURE_DICOM_TENANT_ID` e `AZURE_DICOM_CLIENT_SECRET`, respectivamente.
+5. No recurso DICOM service criado no passo 1, vá em **Access control
+   (IAM)** e conceda ao App registration a role **DICOM Data Owner** (ou
+   **DICOM Data Contributor**, para acesso só de escrita/leitura sem
+   administração).
+6. Cole os quatro valores no `.env`, reinicie a API/worker e ligue a
+   feature flag `dicom_service_enabled` na tela `/admin/feature-flags`.
+
+O adaptador (`app.integrations.dicom.client.DicomClient`) usa o protocolo
+**DICOMweb**: `STOW-RS` para armazenar o arquivo DICOM recebido no upload
+de imagem, e `WADO-RS` para recuperar um frame renderizado como PNG. O
+token de acesso é obtido via `ClientSecretCredential` (biblioteca
+`azure-identity`) com o escopo
+`https://dicom.healthcareapis.azure.com/.default`, renovado
+automaticamente a cada chamada.
+
+Sem `AZURE_DICOM_ENDPOINT` configurado (padrão), a fábrica do adaptador
+(`app.integrations.dicom.get_dicom_client`) retorna `None` e o upload de
+imagem DICOM segue normalmente, só sem o armazenamento adicional no Azure
+Health Data Services — a extração de metadados DICOM (modalidade, região
+do corpo, etc.) já existente no processador de imagem não depende deste
+adaptador.
+
+---
+
+## 11. Visão computacional de vídeo (OpenPose/YOLOv8)
 
 ```env
 VISION_PROVIDER=OPENPOSE_YOLOV8
@@ -367,7 +423,7 @@ avaliação de qualidade baseada em duração do arquivo.
 
 ---
 
-## 11. Tela de feature flags (`/admin/feature-flags`)
+## 12. Tela de feature flags (`/admin/feature-flags`)
 
 Acesso restrito a administrador (técnico ou clínico — mesma regra de
 `/admin/*`). Permite, sem reiniciar o processo:
@@ -395,7 +451,7 @@ Toda alteração é registrada em auditoria (categoria `ADMINISTRATION`,
 ação `FEATURE_FLAGS_UPDATED`) com o valor antes/depois de cada campo
 alterado.
 
-### 11.1 Azure AI Vision (imagem, enriquecimento opcional)
+### 12.1 Azure AI Vision (imagem, enriquecimento opcional)
 
 ```env
 AZURE_VISION_KEY=...
@@ -415,7 +471,7 @@ existente (`app.vision.image_category`) e nunca a substitui.
 
 ---
 
-## 12. Identidade
+## 13. Identidade
 
 O único adaptador de identidade deste MVP é local: resolve o usuário a
 partir do cabeçalho de desenvolvimento `X-Dev-Subject`, contendo o
@@ -426,7 +482,7 @@ ID) é evolução futura, não implementada hoje.
 
 ---
 
-## 13. Rate limiting e segurança de sessão
+## 14. Rate limiting e segurança de sessão
 
 Estas variáveis já têm defaults razoáveis e normalmente não precisam ser
 alteradas:
@@ -441,7 +497,7 @@ SESSION_MAX_AGE_SECONDS=28800      # 8 horas (teto de duracao de um grant break-
 
 ---
 
-## 14. Referência completa de variáveis de ambiente
+## 15. Referência completa de variáveis de ambiente
 
 | Variável | Padrão | Obrigatória quando... |
 | --- | --- | --- |
@@ -458,6 +514,8 @@ SESSION_MAX_AGE_SECONDS=28800      # 8 horas (teto de duracao de um grant break-
 | `AZURE_SPEECH_KEY` / `AZURE_SPEECH_REGION` | vazio | `TRANSCRIPTION_PROVIDER=AZURE_SPEECH` |
 | `AZURE_LANGUAGE_KEY` / `AZURE_LANGUAGE_ENDPOINT` | vazio | feature flag `sentiment_analysis_enabled` |
 | `AZURE_VISION_KEY` / `AZURE_VISION_ENDPOINT` | vazio | feature flag `image_recognition_enabled` |
+| `AZURE_DICOM_ENDPOINT` | vazio | feature flag `dicom_service_enabled` |
+| `AZURE_DICOM_TENANT_ID` / `AZURE_DICOM_CLIENT_ID` / `AZURE_DICOM_CLIENT_SECRET` | vazio | `AZURE_DICOM_ENDPOINT` configurado |
 | `VISION_PROVIDER` | `LOCAL` | Ligar visão real: `OPENPOSE_YOLOV8` |
 | `VISION_MAX_SAMPLE_FRAMES` | `8` | — |
 | `SESSION_MAX_AGE_SECONDS` | `28800` (8h) | — |
@@ -477,7 +535,7 @@ diretamente, usadas para montar `DATABASE_URL`):
 
 ---
 
-## 15. Migrations, seed e primeira execução
+## 16. Migrations, seed e primeira execução
 
 Depois de qualquer configuração acima, a sequência para colocar o sistema
 de pé é sempre a mesma:
@@ -505,7 +563,7 @@ regras, rodar uma análise, revisar e baixar o PDF), siga
 
 ---
 
-## 16. Checklist para um teste real de ponta a ponta
+## 17. Checklist para um teste real de ponta a ponta
 
 - [ ] `.env` criado (`cp .env.example .env`) e `make setup` executado
 - [ ] Postgres de pé (`make compose-up`) e migrations aplicadas (`make migrate`)
@@ -515,12 +573,13 @@ regras, rodar uma análise, revisar e baixar o PDF), siga
 - [ ] Para transcrição real: recurso Azure AI Speech criado, `AZURE_SPEECH_KEY`/`AZURE_SPEECH_REGION` no `.env`, `TRANSCRIPTION_PROVIDER=AZURE_SPEECH`
 - [ ] Para sentimento/termos real: recurso Azure AI Language criado, chaves no `.env`, flag `sentiment_analysis_enabled` ligada em `/admin/feature-flags`
 - [ ] Para reconhecimento de imagem real: recurso Azure AI Vision criado, chaves no `.env`, flag `image_recognition_enabled` ligada
+- [ ] Para armazenamento DICOM real: workspace + DICOM service criados no Azure Health Data Services, App registration com role DICOM Data Owner/Contributor, quatro variáveis `AZURE_DICOM_*` no `.env`, flag `dicom_service_enabled` ligada
 - [ ] Para visão de vídeo real: `uv sync --group vision`, `ffmpeg` no `PATH`, `VISION_PROVIDER=OPENPOSE_YOLOV8`, flag `vision_detection_enabled` ligada (YOLOv8 é o mais rápido de habilitar; OpenPose exige compilar o binário separadamente)
 - [ ] Para consolidação por LLM real: `OPENAI_API_KEY` no `.env`, `LLM_PROVIDER=OPENAI`, flag `llm_provider_enabled` ligada com `llm_provider=OPENAI`
 
 ---
 
-## 17. Solução de problemas
+## 18. Solução de problemas
 
 **`FATAL: database "..." does not exist` no container do Postgres.**
 `POSTGRES_DB` no `.env` não bate com o banco referenciado em
@@ -551,6 +610,17 @@ Confirme que pelo menos uma das flags `vision_detection_enabled`/
 `vision_pose_enabled` está ligada na tela de administração, e que a
 dependência correspondente está instalada (`ultralytics` para YOLOv8,
 binário compilado para OpenPose) e `ffmpeg` está no `PATH`.
+
+**Upload DICOM funciona, mas o arquivo nunca aparece no Azure Health Data Services.**
+Confirme que `AZURE_DICOM_ENDPOINT` está preenchido no `.env` — sem ele,
+`get_dicom_client` retorna `None` e o adaptador é pulado silenciosamente
+(o upload continua funcionando localmente, só sem o envio ao Azure).
+Se o endpoint estiver preenchido e ainda assim falhar, confira nos logs
+do worker se há erro `401`/`403` do DICOMweb (`STOW-RS`): geralmente
+indica que o App registration não tem a role **DICOM Data Owner**/
+**DICOM Data Contributor** concedida no recurso (Access control/IAM), ou
+que `AZURE_DICOM_TENANT_ID`/`AZURE_DICOM_CLIENT_ID`/
+`AZURE_DICOM_CLIENT_SECRET` não correspondem ao App registration correto.
 
 ---
 
