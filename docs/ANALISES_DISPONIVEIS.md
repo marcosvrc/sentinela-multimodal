@@ -526,6 +526,145 @@ técnica isoladamente nunca é suficiente.
 
 ---
 
+## 12. Resultados obtidos
+
+Esta seção mostra capturas de tela reais do sistema em execução,
+ilustrando os conceitos descritos nas seções anteriores com um caso
+concreto: **Alexandre Duarte Sales** (SEED-PAT-0001), um paciente
+sintético com queixas compatíveis com uma possível síndrome coronariana
+aguda, analisado de forma multimodal (áudio + vídeo + imagem + texto +
+dados clínicos estruturados).
+
+### 12.1 Análise multimodal — dados clínicos estruturados e achados
+
+![Tela de revisão da análise — dados clínicos estruturados e dados multimodais](imagem_resultados/Tela_Analise_Modalidade_Dados_Clinicos_Monodal.png)
+
+Topo da tela de revisão (seção 11.1). O bloco **Dados clínicos
+estruturados** mostra `Nível de risco = 1 (baixo)` — resultado do motor
+de regras determinístico avaliando os dois sinais informados (frequência
+cardíaca e pressão arterial, ambos classificados como "Normal" nos
+achados determinísticos abaixo). `Resultado = Conclusivo` confirma que
+uma regra publicada casou para os dois sinais. A `Taxa conclusiva = 65%`
+é a estatística agregada da instituição já explicada na seção 11.1 — não
+é específica desta análise.
+
+Abaixo, o bloco **Dados multimodais** mostra 4 modalidades enviadas
+(áudio, vídeo, imagem, texto), das quais 3 tiveram achado clinicamente
+relevante confirmado pelo guardrail da seção 11.2 (áudio, vídeo e
+imagem — o texto, como será visto em 12.2, não passou o guardrail). A
+tabela "Termos clínicos e observações" lista os termos extraídos da
+transcrição/texto (suor frio, dor no peito, dor, irradiação para o braço
+esquerdo, falta de ar), todos marcados `Presente`/`Atual`/`Confirmado`,
+método de extração primário via LLM (seção 11.2). Note a divergência
+central deste exemplo: **os sinais vitais isolados classificam risco
+baixo**, mas os achados multimodais (queixas verbais de dor torácica
+irradiando, voz enfraquecida, expressão facial de dor) sugerem algo bem
+mais grave — é exatamente esse tipo de caso que a análise assistida por
+IA (seção 12.2) foi desenhada para sinalizar, sem nunca sobrescrever o
+`risk_level` determinístico.
+
+### 12.2 Análise multimodal — achados por modalidade e guardrail de relevância clínica
+
+![Tela de revisão da análise — achados detalhados por modalidade](imagem_resultados/Tela_Analise_Modalidade_Dados_Clinicos_Multimodal_1.png)
+
+Continuação da mesma tela de revisão, agora mostrando "Observações
+complementares por tipo de dado" — o detalhamento por modalidade descrito
+na seção 11.2:
+
+- **Áudio**: energia vocal baixa ("possível voz fraca", pausas em 22% do
+  tempo — achado da análise acústica DSP, sempre ativa e local) e a
+  transcrição via Azure AI Speech ("Dor, doutor, estou sentindo uma dor
+  muito forte no peito..."), com sentimento **Negativo (87%)** via Azure
+  AI Language, sempre contextual.
+- **Vídeo**: visão computacional (YOLOv8) detectando objetos com
+  confiança ("pessoa" 91%, "cadeira" 68%) e uma análise de cena via GPT-4
+  Vision.
+- **Imagem**: contexto visual gerado por GPT-4 Vision descrevendo
+  expressão facial de dor, postura curvada e mão sobre o peito — um
+  achado que só conta como "com relevância clínica" (seção 11.2) porque
+  passou pelo guardrail de imagem antes de chegar aqui.
+- **Texto**: aqui está o exemplo prático do guardrail rejeitando um
+  achado — o texto informado foi "Gosto de bolo de milho.", avaliado com
+  **0% de relevância clínica** ("fala de um gosto pessoal e não menciona
+  questões relacionadas à saúde"). Por isso a análise de sentimento e a
+  extração de termos foram **dispensadas** para essa modalidade — é o
+  motivo pelo qual a contagem "Com relevância clínica" do bloco anterior
+  é 3, não 4.
+
+### 12.3 Análise multimodal — risco assistido por IA e apoio à análise clínica
+
+![Tela de revisão da análise — avaliação assistida por IA e apoio à análise clínica](imagem_resultados/Tela_Analise_Modalidade_Dados_Clinicos_Multimodal_2.png)
+
+Parte final da tela de revisão (seção 11.3), onde a divergência apontada
+em 12.1 se torna explícita. O card **Risco sugerido = 5 (Muito alto)**
+é o resultado da chamada de LLM separada (`assess_modality_risk`) — a
+justificativa cita exatamente os achados multimodais relevantes (dor
+torácica irradiando, falta de ar, suor frio, postura curvada, cena de
+vídeo sugerindo uma queda) como base para a sugestão, nunca os sinais
+vitais isolados. O **resumo explicativo** abaixo menciona a divergência
+de forma textual ("o risco clínico foi classificado como nível 1... no
+entanto, a análise assistida por IA... sugere um risco muito mais alto
+(nível 5)") — exatamente o comportamento descrito na seção 11.3: o LLM
+explica a diferença, mas o `risk_level = 1` determinístico continua sendo
+o valor oficial do laudo.
+
+O bloco **Apoio à análise clínica (IA)** (terceira chamada de LLM,
+independente) organiza a mesma informação em três textos — visão
+clínica, causas prováveis e direcionamento sugerido (recomendação de ECG
+e exames laboratoriais) — sempre fechado com o aviso de que é um apoio à
+decisão, não um diagnóstico definitivo. A tabela final "Modalidades e
+contribuição na análise" confirma que áudio, vídeo e imagem contribuíram
+com dados clínicos identificados na síntese final (seção 11.4) — o texto,
+consistente com a rejeição pelo guardrail em 12.2, não aparece nesta
+lista.
+
+### 12.4 Alertas de anomalia — severidade Crítica
+
+![Tela de detalhe do paciente — alertas de anomalia, severidade Crítica](imagem_resultados/Tela_Cadastro_Paciente_1_Critico.png)
+
+Tela de detalhe do paciente (`/patients/:id`), painel de alertas de
+anomalia descrito na seção 9 — mecanismo **independente** do motor de
+regras, nunca altera o `risk_level` do laudo. Este paciente tem 1 alerta
+`CRÍTICA`, 2 `ALTA` e 4 `MODERADA` (big numbers no topo do painel). Com a
+aba "Crítica" selecionada, a tabela de detalhes mostra um alerta de
+`TEMPERATURE` com ação esperada "Acionar a equipe assistencial
+imediatamente; considerar avaliação médica urgente" — a redação de maior
+urgência entre as ações possíveis, consistente com a severidade
+`CRITICAL` do critério de desvio de baseline (seção 9.1, ≥4σ) ou de
+variação abrupta (seção 9.2). O status `Reconhecido` indica que a equipe
+já deu o primeiro passo do fluxo de tratamento do alerta
+(`acknowledge`/`escalate`/`resolve`, seção 9.3).
+
+### 12.5 Alertas de anomalia — severidade Alta
+
+![Tela de detalhe do paciente — alertas de anomalia, severidade Alta](imagem_resultados/Tela_Cadastro_Paciente_2_Alto.png)
+
+Mesma tela, aba "Alta" selecionada: dois alertas simultâneos,
+`BLOOD_PRESSURE_DIASTOLIC` e `BLOOD_PRESSURE_SYSTOLIC`, ambos com ação
+esperada "Notificar a equipe assistencial responsável e reavaliar o
+paciente prontamente" e status `Aberto` (ainda não reconhecido). Duas
+leituras de pressão arterial (sistólica e diastólica) dispararem juntas
+é consistente com os dois sinais compartilharem a mesma medição de
+origem — cada um é avaliado de forma independente pelo detector (seção
+9), mas frequentemente se movem juntos clinicamente.
+
+### 12.6 Alertas de anomalia — severidade Moderada
+
+![Tela de detalhe do paciente — alertas de anomalia, severidade Moderada](imagem_resultados/Tela_Cadastro_Paciente_3_Moderado.png)
+
+Aba "Moderada" selecionada: quatro alertas de sinais diferentes (SpO2,
+pressão diastólica, frequência cardíaca, frequência respiratória), todos
+com a ação esperada de menor urgência entre as três severidades —
+"Reavaliar o paciente e registrar nova observação deste sinal em até 1
+hora" — e status `Aberto`. Esta captura ilustra bem o volume esperado de
+alertas de baixa/moderada severidade em um paciente monitorado
+continuamente: a maioria das anomalias detectadas (4 de 7 alertas totais
+deste paciente) é `MODERADA`, reservando `ALTA`/`CRÍTICA` para desvios
+mais expressivos — o mesmo comportamento documentado na tabela de
+limiares da seção 9.1 (2σ para `MODERATE` vs. 4σ para `CRITICAL`).
+
+---
+
 ## Documentação relacionada
 
 - [`docs/MANUAL_USO.md`](MANUAL_USO.md) — como usar cada análise pela interface
