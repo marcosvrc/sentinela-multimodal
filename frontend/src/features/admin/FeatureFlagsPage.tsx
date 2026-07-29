@@ -13,27 +13,12 @@ import { useToast } from "@/components/feedback/ToastProvider";
 import { useDevSession } from "@/hooks/useDevSession";
 import { extractErrorMessage } from "@/lib/errorMessage";
 import { getFeatureFlags, updateFeatureFlags } from "@/services/api/administration";
-import {
-  ImageRecognitionProvider,
-  LlmProvider,
-  SentimentAnalysisProvider,
-} from "@/types/enums.generated";
+import { LlmProvider } from "@/types/enums.generated";
 import type { FeatureFlags } from "@/types/featureFlags";
 
 const LLM_PROVIDER_OPTIONS = [
   { value: LlmProvider.OPENAI, label: "OpenAI (GPT)" },
-  { value: LlmProvider.BEDROCK, label: "Amazon Bedrock" },
   { value: LlmProvider.GEMINI, label: "Google Gemini" },
-];
-
-const IMAGE_RECOGNITION_PROVIDER_OPTIONS = [
-  { value: ImageRecognitionProvider.AWS_REKOGNITION, label: "Amazon Rekognition Image" },
-  { value: ImageRecognitionProvider.AZURE_VISION, label: "Azure AI Vision" },
-];
-
-const SENTIMENT_ANALYSIS_PROVIDER_OPTIONS = [
-  { value: SentimentAnalysisProvider.AWS_COMPREHEND, label: "Amazon Comprehend" },
-  { value: SentimentAnalysisProvider.AZURE_LANGUAGE, label: "Azure AI Language" },
 ];
 
 /**
@@ -72,7 +57,6 @@ export function FeatureFlagsPage() {
         llm_provider_enabled: draft.llm_provider_enabled,
         llm_provider: draft.llm_provider,
         llm_openai_model: draft.llm_openai_model,
-        llm_bedrock_model: draft.llm_bedrock_model,
         llm_gemini_model: draft.llm_gemini_model,
         modality_audio_enabled: draft.modality_audio_enabled,
         modality_video_enabled: draft.modality_video_enabled,
@@ -80,11 +64,9 @@ export function FeatureFlagsPage() {
         vision_detection_enabled: draft.vision_detection_enabled,
         vision_pose_enabled: draft.vision_pose_enabled,
         image_recognition_enabled: draft.image_recognition_enabled,
-        image_recognition_provider: draft.image_recognition_provider,
-        vision_rekognition_video_enabled: draft.vision_rekognition_video_enabled,
         sentiment_analysis_enabled: draft.sentiment_analysis_enabled,
-        sentiment_analysis_provider: draft.sentiment_analysis_provider,
         auto_clinical_support_enabled: draft.auto_clinical_support_enabled,
+        dicom_service_enabled: draft.dicom_service_enabled,
       });
     },
     onSuccess: (updated) => {
@@ -119,19 +101,16 @@ export function FeatureFlagsPage() {
   const modelOptionsByProvider: Record<LlmProvider, typeof draft.openai_model_options> = {
     [LlmProvider.LOCAL]: [],
     [LlmProvider.OPENAI]: draft.openai_model_options,
-    [LlmProvider.BEDROCK]: draft.bedrock_model_options,
     [LlmProvider.GEMINI]: draft.gemini_model_options,
   };
   const selectedModelByProvider: Record<LlmProvider, string> = {
     [LlmProvider.LOCAL]: "",
     [LlmProvider.OPENAI]: draft.llm_openai_model,
-    [LlmProvider.BEDROCK]: draft.llm_bedrock_model,
     [LlmProvider.GEMINI]: draft.llm_gemini_model,
   };
   const modelFieldByProvider: Record<LlmProvider, keyof FeatureFlags | null> = {
     [LlmProvider.LOCAL]: null,
     [LlmProvider.OPENAI]: "llm_openai_model",
-    [LlmProvider.BEDROCK]: "llm_bedrock_model",
     [LlmProvider.GEMINI]: "llm_gemini_model",
   };
   const modelOptions = modelOptionsByProvider[draft.llm_provider];
@@ -186,14 +165,6 @@ export function FeatureFlagsPage() {
           disabled={!draft.llm_provider_enabled}
         />
 
-        {draft.llm_provider === LlmProvider.BEDROCK && (
-          <p style={{ color: "var(--color-text-muted)", fontSize: "var(--font-size-sm)", margin: 0 }}>
-            Usa as credenciais IAM do processo (mesmas de S3/SQS/Transcribe/Rekognition) - não
-            depende de uma chave de API externa. Requer a permissão <code>bedrock:InvokeModel</code>{" "}
-            concedida e o acesso ao modelo liberado no console Bedrock da conta/região.
-          </p>
-        )}
-
         {draft.llm_provider === LlmProvider.GEMINI && !draft.gemini_implemented && (
           <div
             role="alert"
@@ -220,7 +191,7 @@ export function FeatureFlagsPage() {
 
       <Section
         title="Apoio à análise clínica (IA) automático"
-        description="Quando ligado, o resumo de apoio à análise clínica é gerado automaticamente ao final do processamento de cada análise, sem precisar clicar no botão manual na tela de revisão. Só executa quando há conteúdo clinicamente relevante identificado (dados clínicos estruturados, achado confirmado como relevante pelo Rekognition, termo clínico em texto/transcrição, ou análise acústica de voz) - nunca só porque a análise tem mídia. Desligado, nenhuma chamada automática ao LLM ocorre para este propósito (equivalente a nunca clicar no botão)."
+        description="Quando ligado, o resumo de apoio à análise clínica é gerado automaticamente ao final do processamento de cada análise, sem precisar clicar no botão manual na tela de revisão. Só executa quando há conteúdo clinicamente relevante identificado (dados clínicos estruturados, rótulo confirmado como relevante pelo Azure AI Vision, termo clínico em texto/transcrição, ou análise acústica de voz) - nunca só porque a análise tem mídia. Desligado, nenhuma chamada automática ao LLM ocorre para este propósito (equivalente a nunca clicar no botão)."
       >
         <Switch
           id="auto-clinical-support"
@@ -277,37 +248,20 @@ export function FeatureFlagsPage() {
 
       <Section
         title="Reconhecimento de imagem (enriquecimento complementar)"
-        description="Rótulos genéricos somados às análises já existentes. Nunca substituem a categorização heurística de imagem nem a estimativa de pose do worker OpenPose/YOLOv8 (ver ADR 0016). Requer credenciais do provedor escolhido configuradas."
+        description="Rótulos genéricos (Azure AI Vision) somados às análises já existentes. Nunca substituem a categorização heurística de imagem nem a estimativa de pose do worker OpenPose/YOLOv8 (ver ADR 0016). Requer AZURE_VISION_KEY/AZURE_VISION_ENDPOINT configurados no .env."
       >
         <Switch
           id="image-recognition"
-          label="Rótulos de imagem"
+          label="Rótulos de imagem (Azure AI Vision)"
           hint="Complementa a categorização heurística de imagem (foto clínica / documento / radiológica)."
           checked={draft.image_recognition_enabled}
           onChange={(checked) => update("image_recognition_enabled", checked)}
-        />
-        <SelectField
-          id="image-recognition-provider"
-          label="Provedor"
-          options={IMAGE_RECOGNITION_PROVIDER_OPTIONS}
-          value={draft.image_recognition_provider}
-          onChange={(event) =>
-            update("image_recognition_provider", event.target.value as ImageRecognitionProvider)
-          }
-          disabled={!draft.image_recognition_enabled}
-        />
-        <Switch
-          id="vision-rekognition-video"
-          label="Rekognition Video (rótulos de vídeo)"
-          hint="Complementa o worker OpenPose/YOLOv8 com rótulos genéricos e timestamp. Não faz estimativa de pose. Sem equivalente Azure implementado ainda."
-          checked={draft.vision_rekognition_video_enabled}
-          onChange={(checked) => update("vision_rekognition_video_enabled", checked)}
         />
       </Section>
 
       <Section
         title="Análise de sentimento (enriquecimento contextual)"
-        description="Sentimento identificado no texto adicional e na transcrição de áudio - sempre contextual, nunca determina risco clínico nem entra na consolidação de risco calculada pelo motor de regras. Requer credenciais do provedor escolhido configuradas."
+        description="Sentimento identificado no texto adicional e na transcrição de áudio (Azure AI Language) - sempre contextual, nunca determina risco clínico nem entra na consolidação de risco calculada pelo motor de regras. Requer AZURE_LANGUAGE_KEY/AZURE_LANGUAGE_ENDPOINT configurados no .env."
       >
         <Switch
           id="sentiment-analysis"
@@ -316,15 +270,18 @@ export function FeatureFlagsPage() {
           checked={draft.sentiment_analysis_enabled}
           onChange={(checked) => update("sentiment_analysis_enabled", checked)}
         />
-        <SelectField
-          id="sentiment-analysis-provider"
-          label="Provedor"
-          options={SENTIMENT_ANALYSIS_PROVIDER_OPTIONS}
-          value={draft.sentiment_analysis_provider}
-          onChange={(event) =>
-            update("sentiment_analysis_provider", event.target.value as SentimentAnalysisProvider)
-          }
-          disabled={!draft.sentiment_analysis_enabled}
+      </Section>
+
+      <Section
+        title="Imagens médicas DICOM (Azure Health Data Services)"
+        description="Armazena a imagem médica recebida no upload também no Azure Health Data Services (DICOM Service), via protocolo DICOMweb. Requer AZURE_DICOM_ENDPOINT/AZURE_DICOM_TENANT_ID/AZURE_DICOM_CLIENT_ID/AZURE_DICOM_CLIENT_SECRET configurados no .env."
+      >
+        <Switch
+          id="dicom-service"
+          label="Armazenar imagens DICOM no Azure Health Data Services"
+          hint="Sem AZURE_DICOM_ENDPOINT configurado, o upload local continua funcionando normalmente, apenas sem o envio ao Azure."
+          checked={draft.dicom_service_enabled}
+          onChange={(checked) => update("dicom_service_enabled", checked)}
         />
       </Section>
 

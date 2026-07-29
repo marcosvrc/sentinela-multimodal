@@ -7,7 +7,6 @@ const SAMPLE_FLAGS = {
   llm_provider_enabled: false,
   llm_provider: "OPENAI",
   llm_openai_model: "gpt-4o-mini",
-  llm_bedrock_model: "anthropic.claude-3-5-sonnet-20241022-v2:0",
   llm_gemini_model: "gemini-1.5-flash",
   modality_audio_enabled: true,
   modality_video_enabled: true,
@@ -15,23 +14,14 @@ const SAMPLE_FLAGS = {
   vision_detection_enabled: false,
   vision_pose_enabled: false,
   image_recognition_enabled: false,
-  image_recognition_provider: "AWS_REKOGNITION",
-  vision_rekognition_video_enabled: false,
   sentiment_analysis_enabled: false,
-  sentiment_analysis_provider: "AWS_COMPREHEND",
   auto_clinical_support_enabled: false,
+  dicom_service_enabled: false,
   updated_at: "2026-07-16T00:00:00Z",
   updated_by: null,
   openai_model_options: [
     { value: "gpt-4o-mini", label: "GPT-4o mini (recomendado - custo baixo)" },
     { value: "gpt-4o", label: "GPT-4o" },
-  ],
-  bedrock_model_options: [
-    {
-      value: "anthropic.claude-3-5-sonnet-20241022-v2:0",
-      label: "Claude 3.5 Sonnet (recomendado - qualidade multilingue)",
-    },
-    { value: "amazon.nova-pro-v1:0", label: "Amazon Nova Pro" },
   ],
   gemini_model_options: [
     { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
@@ -78,59 +68,7 @@ describe("FeatureFlagsPage", () => {
     expect(await screen.findByText(/ainda não foi implementada/i)).toBeInTheDocument();
   });
 
-  it("ao trocar o provedor para Amazon Bedrock, mostra as opções de modelo e o aviso de credenciais IAM", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() =>
-        Promise.resolve({ ok: true, json: () => Promise.resolve(SAMPLE_FLAGS) }),
-      ) as unknown as typeof fetch,
-    );
-
-    renderWithProviders(<FeatureFlagsPage />);
-
-    await screen.findByText("Feature flags");
-    const providerSelect = document.getElementById("llm-provider") as HTMLSelectElement;
-    fireEvent.change(providerSelect, { target: { value: "BEDROCK" } });
-
-    expect(await screen.findByText(/credenciais iam do processo/i)).toBeInTheDocument();
-    const modelSelect = screen.getByLabelText(/^modelo$/i);
-    expect(modelSelect).toHaveValue("anthropic.claude-3-5-sonnet-20241022-v2:0");
-    expect(
-      screen.getByRole("option", { name: /amazon nova pro/i }),
-    ).toBeInTheDocument();
-  });
-
-  it("envia llm_bedrock_model no PATCH ao selecionar Bedrock e trocar o modelo", async () => {
-    const fetchMock = vi.fn(() =>
-      Promise.resolve({ ok: true, json: () => Promise.resolve(SAMPLE_FLAGS) }),
-    ) as unknown as typeof fetch;
-    vi.stubGlobal("fetch", fetchMock);
-
-    renderWithProviders(<FeatureFlagsPage />);
-
-    await screen.findByText("Feature flags");
-    const providerSelect = document.getElementById("llm-provider") as HTMLSelectElement;
-    fireEvent.change(providerSelect, { target: { value: "BEDROCK" } });
-
-    const modelSelect = await screen.findByLabelText(/^modelo$/i);
-    fireEvent.change(modelSelect, { target: { value: "amazon.nova-pro-v1:0" } });
-
-    fireEvent.click(screen.getByRole("button", { name: /salvar alterações/i }));
-
-    await waitFor(() => {
-      const patchCall = fetchMock.mock.calls.find((call) => {
-        const init = call[1] as { method?: string } | undefined;
-        return init?.method === "PATCH";
-      });
-      expect(patchCall).toBeDefined();
-      const init = patchCall?.[1] as { body?: string } | undefined;
-      const body = JSON.parse(init?.body ?? "{}");
-      expect(body.llm_provider).toBe("BEDROCK");
-      expect(body.llm_bedrock_model).toBe("amazon.nova-pro-v1:0");
-    });
-  });
-
-  it("permite ligar a análise de sentimento (Amazon Comprehend) e envia no PATCH", async () => {
+  it("permite ligar a análise de sentimento (Azure AI Language) e envia no PATCH", async () => {
     const fetchMock = vi.fn(() =>
       Promise.resolve({ ok: true, json: () => Promise.resolve(SAMPLE_FLAGS) }),
     ) as unknown as typeof fetch;
@@ -154,6 +92,60 @@ describe("FeatureFlagsPage", () => {
       const init = patchCall?.[1] as { body?: string } | undefined;
       const body = JSON.parse(init?.body ?? "{}");
       expect(body.sentiment_analysis_enabled).toBe(true);
+    });
+  });
+
+  it("permite ligar o reconhecimento de imagem (Azure AI Vision) e envia no PATCH", async () => {
+    const fetchMock = vi.fn(() =>
+      Promise.resolve({ ok: true, json: () => Promise.resolve(SAMPLE_FLAGS) }),
+    ) as unknown as typeof fetch;
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderWithProviders(<FeatureFlagsPage />);
+
+    await screen.findByText("Feature flags");
+    const imageRecognitionSwitch = screen.getByLabelText(/rótulos de imagem/i);
+    expect(imageRecognitionSwitch).not.toBeChecked();
+    fireEvent.click(imageRecognitionSwitch);
+
+    fireEvent.click(screen.getByRole("button", { name: /salvar alterações/i }));
+
+    await waitFor(() => {
+      const patchCall = fetchMock.mock.calls.find((call) => {
+        const init = call[1] as { method?: string } | undefined;
+        return init?.method === "PATCH";
+      });
+      expect(patchCall).toBeDefined();
+      const init = patchCall?.[1] as { body?: string } | undefined;
+      const body = JSON.parse(init?.body ?? "{}");
+      expect(body.image_recognition_enabled).toBe(true);
+    });
+  });
+
+  it("permite ligar o armazenamento DICOM no Azure Health Data Services e envia no PATCH", async () => {
+    const fetchMock = vi.fn(() =>
+      Promise.resolve({ ok: true, json: () => Promise.resolve(SAMPLE_FLAGS) }),
+    ) as unknown as typeof fetch;
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderWithProviders(<FeatureFlagsPage />);
+
+    await screen.findByText("Feature flags");
+    const dicomSwitch = screen.getByLabelText(/armazenar imagens dicom/i);
+    expect(dicomSwitch).not.toBeChecked();
+    fireEvent.click(dicomSwitch);
+
+    fireEvent.click(screen.getByRole("button", { name: /salvar alterações/i }));
+
+    await waitFor(() => {
+      const patchCall = fetchMock.mock.calls.find((call) => {
+        const init = call[1] as { method?: string } | undefined;
+        return init?.method === "PATCH";
+      });
+      expect(patchCall).toBeDefined();
+      const init = patchCall?.[1] as { body?: string } | undefined;
+      const body = JSON.parse(init?.body ?? "{}");
+      expect(body.dicom_service_enabled).toBe(true);
     });
   });
 

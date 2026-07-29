@@ -56,11 +56,6 @@ export enum AuditResult {
   ERROR = "ERROR",
 }
 
-export enum AuthProvider {
-  LOCAL = "LOCAL",
-  COGNITO = "COGNITO",
-}
-
 export enum ClinicalRuleSetStatus {
   DRAFT = "draft",
   PUBLISHED = "published",
@@ -81,11 +76,6 @@ export enum FindingNature {
   PROFESSIONAL_DECISION = "PROFESSIONAL_DECISION",
 }
 
-export enum ImageRecognitionProvider {
-  AWS_REKOGNITION = "AWS_REKOGNITION",
-  AZURE_VISION = "AZURE_VISION",
-}
-
 export enum LlmCallStatus {
   SUCCESS = "SUCCESS",
   FAILED = "FAILED",
@@ -95,7 +85,6 @@ export enum LlmCallStatus {
 export enum LlmProvider {
   LOCAL = "LOCAL",
   OPENAI = "OPENAI",
-  BEDROCK = "BEDROCK",
   GEMINI = "GEMINI",
 }
 
@@ -195,25 +184,14 @@ export enum RuleEvaluationOutcome {
   INCONCLUSIVE = "INCONCLUSIVE",
 }
 
-export enum SentimentAnalysisProvider {
-  AWS_COMPREHEND = "AWS_COMPREHEND",
-  AZURE_LANGUAGE = "AZURE_LANGUAGE",
-}
-
 export enum SentimentAnalysisStatus {
   COMPLETED = "COMPLETED",
   FAILED = "FAILED",
   UNAVAILABLE = "UNAVAILABLE",
 }
 
-export enum StorageBackend {
-  LOCAL = "LOCAL",
-  S3 = "S3",
-}
-
 export enum TranscriptionProvider {
   LOCAL = "LOCAL",
-  AWS_TRANSCRIBE = "AWS_TRANSCRIBE",
   AZURE_SPEECH = "AZURE_SPEECH",
 }
 

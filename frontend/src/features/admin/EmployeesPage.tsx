@@ -448,7 +448,7 @@ export function EmployeesPage() {
               />
               <TextField
                 id="employee-external-subject"
-                label="Identificador externo (sub do Cognito)"
+                label="Identificador externo (X-Dev-Subject)"
                 required
                 value={form.external_subject}
                 onChange={(event) => updateField("external_subject", event.target.value)}
@@ -457,7 +457,7 @@ export function EmployeesPage() {
                 hint={
                   editingEmployee
                     ? "O identificador externo nao pode ser alterado apos o cadastro."
-                    : "Deve corresponder ao sub que o Cognito emitira para esta conta, criada la via AdminCreateUser."
+                    : "Identificador unico usado no cabecalho X-Dev-Subject (adaptador de identidade local deste MVP) para autenticar esta conta."
                 }
               />
             </div>
